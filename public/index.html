@@ -1,68 +1,37 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>BeraTech Deployment Platform</title>
-  <link rel="stylesheet" href="styles.css">
-  <link rel="manifest" href="manifest.json">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bera PaaS - Deploy Your Apps</title>
+    <link rel="stylesheet" href="style.css">
 </head>
 <body>
-  <header>
-    <h1>BeraTech Deployment</h1>
-    <div id="auth-buttons">
-      <button id="register-btn">Register</button>
-      <button id="login-btn">Login</button>
-      <button id="logout-btn" style="display: none;">Logout</button>
-    </div>
-  </header>
+    <div class="container">
+        <header>
+            <h1>Bera PaaS</h1>
+            <p>Deploy your GitHub repositories with ease</p>
+        </header>
 
-  <main>
-    <div id="auth-forms">
-      <div id="register-form" class="form-container">
-        <h2>Register</h2>
-        <input type="text" id="register-username" placeholder="Username">
-        <input type="password" id="register-password" placeholder="Password">
-        <button id="register-submit">Register</button>
-      </div>
-
-      <div id="login-form" class="form-container">
-        <h2>Login</h2>
-        <input type="text" id="login-username" placeholder="Username">
-        <input type="password" id="login-password" placeholder="Password">
-        <button id="login-submit">Login</button>
-      </div>
-    </div>
-
-    <div id="dashboard" style="display: none;">
-      <h2>Your Applications</h2>
-      <div id="app-creation">
-        <input type="text" id="app-name" placeholder="App name">
-        <button id="create-app">Create New App</button>
-      </div>
-
-      <div id="apps-list"></div>
-
-      <div id="app-details" style="display: none;">
-        <h3 id="detail-app-name"></h3>
-        <p>URL: <a id="detail-app-url" target="_blank"></a></p>
-        <div id="logs-container">
-          <h4>Logs</h4>
-          <div id="logs"></div>
+        <div id="auth-section">
+            <button id="github-auth-btn" class="btn btn-primary">Connect with GitHub</button>
+            <button id="logout-btn" class="btn btn-secondary" style="display: none;">Logout</button>
         </div>
-      </div>
-    </div>
-  </main>
 
-  <script src="/socket.io/socket.io.js"></script>
-  <script src="script.js"></script>
-  <script>
-    // Register service worker
-    if ('serviceWorker' in navigator) {
-      navigator.serviceWorker.register('/service-worker.js')
-        .then(() => console.log('Service Worker Registered'))
-        .catch(err => console.log('Service Worker Registration Failed:', err));
-    }
-  </script>
+        <div id="repos-section" style="display: none;">
+            <h2>Your Repositories</h2>
+            <div id="repos-list" class="repos-grid"></div>
+        </div>
+
+        <div id="deployment-modal" class="modal">
+            <div class="modal-content">
+                <span class="close">&times;</span>
+                <h2>Deployment Logs</h2>
+                <div id="deployment-logs" class="logs-container"></div>
+            </div>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
 </body>
 </html>
