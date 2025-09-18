@@ -21,15 +21,25 @@ app.use(session({
   secret: process.env.SESSION_SECRET || 'your-secret-key',
   resave: false,
   saveUninitialized: false,
-  cookie: { secure: false } // Set to true if using HTTPS directly
+  cookie: { secure: false }
 }));
 
 // Docker client
 const docker = new Docker();
 
-// Ensure logs directory exists
-const logsDir = '/data/logs';
-fs.ensureDirSync(logsDir);
+// Use relative paths instead of absolute paths
+const dataDir = path.join(__dirname, 'data');
+const logsDir = path.join(dataDir, 'logs');
+const reposDir = path.join(dataDir, 'repos');
+
+// Ensure data directories exist
+try {
+  fs.ensureDirSync(logsDir);
+  fs.ensureDirSync(reposDir);
+  console.log(`Data directories created at: ${dataDir}`);
+} catch (error) {
+  console.error('Error creating data directories:', error);
+}
 
 // GitHub OAuth configuration
 const GITHUB_CLIENT_ID = process.env.GITHUB_CLIENT_ID;
@@ -107,7 +117,7 @@ app.post('/api/deploy/:owner/:repo', async (req, res) => {
   }
 
   const repoUrl = `https://${token}@github.com/${owner}/${repo}.git`;
-  const workDir = path.join('/data/repos', owner, repo);
+  const workDir = path.join(reposDir, owner, repo);
   const logFile = path.join(logsDir, `${owner}-${repo}.log`);
 
   try {
@@ -117,23 +127,33 @@ app.post('/api/deploy/:owner/:repo', async (req, res) => {
     // Initialize log file
     await fs.writeFile(logFile, `Starting deployment for ${owner}/${repo} at ${new Date().toISOString()}\n`);
 
+    const appendLog = async (message) => {
+      console.log(message);
+      await fs.appendFile(logFile, message + '\n');
+    };
+
     // Clone or pull repository
     const git = simpleGit(workDir);
-    const appendLog = (message) => fs.appendFile(logFile, message + '\n');
     
-    appendLog(`Cloning repository from ${repoUrl.replace(token, '***')}`);
+    await appendLog(`Cloning repository from ${repoUrl.replace(token, '***')}`);
     
     if (await fs.pathExists(path.join(workDir, '.git'))) {
       await git.pull();
-      appendLog('Repository pulled successfully');
+      await appendLog('Repository pulled successfully');
     } else {
       await git.clone(repoUrl, workDir);
-      appendLog('Repository cloned successfully');
+      await appendLog('Repository cloned successfully');
+    }
+
+    // Check if Dockerfile exists
+    if (!await fs.pathExists(path.join(workDir, 'Dockerfile'))) {
+      await appendLog('ERROR: No Dockerfile found in repository');
+      return res.status(400).json({ error: 'No Dockerfile found in repository' });
     }
 
     // Build Docker image
-    appendLog('Building Docker image...');
-    const imageName = `app-${owner}-${repo}`.toLowerCase();
+    await appendLog('Building Docker image...');
+    const imageName = `app-${owner}-${repo}`.toLowerCase().replace(/[^a-z0-9]/g, '-');
     
     const stream = await docker.buildImage({
       context: workDir,
@@ -146,17 +166,22 @@ app.post('/api/deploy/:owner/:repo', async (req, res) => {
       docker.modem.followProgress(stream, (err, res) => err ? reject(err) : resolve(res));
     });
     
-    appendLog('Docker image built successfully');
+    await appendLog('Docker image built successfully');
 
     // Stop and remove existing container if it exists
     try {
-      const oldContainer = docker.getContainer(imageName);
-      await oldContainer.stop();
-      await oldContainer.remove();
-      appendLog('Stopped and removed existing container');
+      const containers = await docker.listContainers({ all: true });
+      const existingContainer = containers.find(c => c.Names.includes(`/${imageName}`));
+      
+      if (existingContainer) {
+        const container = docker.getContainer(existingContainer.Id);
+        await container.stop();
+        await container.remove();
+        await appendLog('Stopped and removed existing container');
+      }
     } catch (err) {
       // Container might not exist, which is fine
-      appendLog('No existing container to remove');
+      await appendLog('No existing container to remove');
     }
 
     // Find available port
@@ -171,7 +196,7 @@ app.post('/api/deploy/:owner/:repo', async (req, res) => {
     let port = 10000;
     while (usedPorts.has(port)) port++;
     
-    appendLog(`Using port ${port} for deployment`);
+    await appendLog(`Using port ${port} for deployment`);
 
     // Run container
     const container = await docker.createContainer({
@@ -184,7 +209,7 @@ app.post('/api/deploy/:owner/:repo', async (req, res) => {
     });
 
     await container.start();
-    appendLog('Container started successfully');
+    await appendLog('Container started successfully');
 
     // Create nginx configuration
     const domain = process.env.DOMAIN || 'bera.karenbishop.online';
@@ -205,34 +230,31 @@ server {
 }
 `;
 
-    const nginxConfPath = `/etc/nginx/conf.d/${subdomain}.conf`;
+    const nginxConfDir = path.join(__dirname, 'conf.d');
+    await fs.ensureDir(nginxConfDir);
+    const nginxConfPath = path.join(nginxConfDir, `${subdomain}.conf`);
     await fs.writeFile(nginxConfPath, nginxConf);
-    appendLog(`Nginx configuration created at ${nginxConfPath}`);
+    await appendLog(`Nginx configuration created at ${nginxConfPath}`);
 
-    // Reload nginx
-    const { exec } = require('child_process');
-    exec('nginx -s reload', (error) => {
-      if (error) {
-        appendLog(`Error reloading nginx: ${error}`);
-      } else {
-        appendLog('Nginx reloaded successfully');
-      }
-    });
-
-    // Request SSL certificate (this would typically be handled by certbot in the docker-compose)
-    appendLog(`Deployment complete! Your app will be available at https://${subdomain} after SSL certificate is issued`);
+    // Reload nginx (this would be handled by the nginx container)
+    await appendLog('Nginx configuration created. Manual reload may be needed.');
+    await appendLog(`Deployment complete! Your app will be available at http://${subdomain}`);
 
     res.json({ 
       success: true, 
       message: 'Deployment started', 
-      url: `https://${subdomain}`,
+      url: `http://${subdomain}`,
       logFile 
     });
 
   } catch (error) {
     console.error('Deployment error:', error);
     const errorMessage = `Deployment failed: ${error.message}`;
-    await fs.appendFile(logFile, errorMessage + '\n');
+    try {
+      await fs.appendFile(logFile, errorMessage + '\n');
+    } catch (e) {
+      console.error('Failed to write to log file:', e);
+    }
     res.status(500).json({ error: errorMessage });
   }
 });
@@ -257,12 +279,19 @@ app.get('/api/logs/:owner/:repo', async (req, res) => {
 // Get deployment status
 app.get('/api/status/:owner/:repo', async (req, res) => {
   const { owner, repo } = req.params;
-  const containerName = `app-${owner}-${repo}`.toLowerCase();
+  const containerName = `app-${owner}-${repo}`.toLowerCase().replace(/[^a-z0-9]/g, '-');
   
   try {
-    const container = docker.getContainer(containerName);
-    const info = await container.inspect();
-    res.json({ status: info.State.Status, running: info.State.Running });
+    const containers = await docker.listContainers({ all: true });
+    const containerInfo = containers.find(c => c.Names.includes(`/${containerName}`));
+    
+    if (containerInfo) {
+      const container = docker.getContainer(containerInfo.Id);
+      const info = await container.inspect();
+      res.json({ status: info.State.Status, running: info.State.Running });
+    } else {
+      res.json({ status: 'not deployed', running: false });
+    }
   } catch (error) {
     res.json({ status: 'not deployed', running: false });
   }
@@ -285,4 +314,5 @@ app.post('/api/logout', (req, res) => {
 
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
+  console.log(`Data directory: ${dataDir}`);
 });
