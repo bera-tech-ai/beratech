@@ -1,0 +1,484 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BeraTech Deployment Site</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        'bera-dark': '#0d1117',
+                        'bera-primary': '#00ffcc',
+                        'bera-secondary': '#0088cc',
+                    }
+                }
+            }
+        }
+    </script>
+    <link rel="manifest" href="manifest.json">
+    <style>
+        body {
+            background-color: #0d1117;
+            color: #c9d1d9;
+        }
+        .btn-bera {
+            background-color: #00ffcc;
+            color: #0d1117;
+        }
+        .btn-bera:hover {
+            background-color: #00ddbb;
+        }
+    </style>
+</head>
+<body class="min-h-screen">
+    <div class="container mx-auto px-4 py-8">
+        <!-- Header -->
+        <header class="flex justify-between items-center mb-8">
+            <h1 class="text-3xl font-bold text-bera-primary">BeraTech Deployment Site</h1>
+            <div id="auth-buttons" class="hidden">
+                <button onclick="showAuthModal('login')" class="btn-bera px-4 py-2 rounded font-semibold mr-2">Login</button>
+                <button onclick="showAuthModal('signup')" class="btn-bera px-4 py-2 rounded font-semibold">Sign Up</button>
+            </div>
+            <div id="user-info" class="hidden">
+                <span id="username" class="mr-4"></span>
+                <button onclick="logout()" class="btn-bera px-4 py-2 rounded font-semibold">Logout</button>
+            </div>
+        </header>
+
+        <!-- Auth Modal -->
+        <div id="auth-modal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center hidden">
+            <div class="bg-bera-dark p-6 rounded-lg shadow-xl w-96">
+                <h2 id="auth-modal-title" class="text-2xl font-bold text-bera-primary mb-4">Login</h2>
+                <form id="auth-form" onsubmit="handleAuth(event)">
+                    <div class="mb-4">
+                        <label class="block text-sm font-medium mb-1">Username</label>
+                        <input type="text" id="auth-username" required class="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded text-white">
+                    </div>
+                    <div class="mb-4">
+                        <label class="block text-sm font-medium mb-1">Password</label>
+                        <input type="password" id="auth-password" required class="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded text-white">
+                    </div>
+                    <div class="flex justify-between items-center">
+                        <button type="button" onclick="hideAuthModal()" class="px-4 py-2 rounded border border-gray-700">Cancel</button>
+                        <button type="submit" class="btn-bera px-4 py-2 rounded font-semibold">Submit</button>
+                    </div>
+                </form>
+                <p id="auth-error" class="text-red-400 mt-4 hidden"></p>
+            </div>
+        </div>
+
+        <!-- Main Content -->
+        <main>
+            <!-- Welcome Section -->
+            <section id="welcome-section" class="text-center py-12">
+                <h2 class="text-4xl font-bold text-bera-primary mb-4">Deploy Your Apps with Ease</h2>
+                <p class="text-xl mb-8">A Heroku-like platform for seamless deployment</p>
+                <button onclick="showAuthModal('signup')" class="btn-bera px-6 py-3 rounded-lg text-lg font-semibold">Get Started</button>
+            </section>
+
+            <!-- Dashboard Section -->
+            <section id="dashboard" class="hidden">
+                <div class="flex justify-between items-center mb-6">
+                    <h2 class="text-2xl font-bold text-bera-primary">Your Applications</h2>
+                    <button onclick="showCreateAppModal()" class="btn-bera px-4 py-2 rounded font-semibold">Create New App</button>
+                </div>
+
+                <div id="apps-list" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    <!-- Apps will be populated here -->
+                </div>
+
+                <!-- Logs Panel -->
+                <div class="mt-12">
+                    <h3 class="text-xl font-bold text-bera-primary mb-4">Application Logs</h3>
+                    <div id="logs-panel" class="bg-gray-900 p-4 rounded h-96 overflow-y-auto font-mono text-sm">
+                        <p class="text-gray-500">Select an app and click "View Logs" to see real-time logs</p>
+                    </div>
+                </div>
+            </section>
+        </main>
+
+        <!-- Create App Modal -->
+        <div id="create-app-modal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center hidden">
+            <div class="bg-bera-dark p-6 rounded-lg shadow-xl w-96">
+                <h2 class="text-2xl font-bold text-bera-primary mb-4">Create New App</h2>
+                <form onsubmit="createApp(event)">
+                    <div class="mb-4">
+                        <label class="block text-sm font-medium mb-1">App Name</label>
+                        <input type="text" id="app-name" required pattern="[a-z0-9-]+" title="Lowercase letters, numbers, and hyphens only" class="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded text-white">
+                        <p class="text-xs text-gray-500 mt-1">Use only lowercase letters, numbers, and hyphens</p>
+                    </div>
+                    <div class="flex justify-between items-center">
+                        <button type="button" onclick="hideCreateAppModal()" class="px-4 py-2 rounded border border-gray-700">Cancel</button>
+                        <button type="submit" class="btn-bera px-4 py-2 rounded font-semibold">Create</button>
+                    </div>
+                </form>
+                <p id="create-app-error" class="text-red-400 mt-4 hidden"></p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let currentUser = null;
+        let currentToken = null;
+        let logsWebSocket = null;
+        let currentAppLogs = null;
+
+        // Check if user is logged in on page load
+        document.addEventListener('DOMContentLoaded', () => {
+            const token = getCookie('token');
+            if (token) {
+                validateToken(token);
+            } else {
+                showWelcomeSection();
+            }
+        });
+
+        // Authentication functions
+        function showAuthModal(type) {
+            const modal = document.getElementById('auth-modal');
+            const title = document.getElementById('auth-modal-title');
+            const form = document.getElementById('auth-form');
+            
+            if (type === 'login') {
+                title.textContent = 'Login';
+                form.onsubmit = (e) => handleAuth(e, 'login');
+            } else {
+                title.textContent = 'Sign Up';
+                form.onsubmit = (e) => handleAuth(e, 'signup');
+            }
+            
+            modal.classList.remove('hidden');
+        }
+
+        function hideAuthModal() {
+            document.getElementById('auth-modal').classList.add('hidden');
+            document.getElementById('auth-error').classList.add('hidden');
+        }
+
+        async function handleAuth(event, type) {
+            event.preventDefault();
+            
+            const username = document.getElementById('auth-username').value;
+            const password = document.getElementById('auth-password').value;
+            const errorElement = document.getElementById('auth-error');
+            
+            try {
+                const response = await fetch(`/api/${type}`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ username, password })
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok) {
+                    currentToken = data.token;
+                    document.cookie = `token=${data.token}; path=/; max-age=86400`; // 24 hours
+                    hideAuthModal();
+                    await validateToken(data.token);
+                } else {
+                    errorElement.textContent = data.error;
+                    errorElement.classList.remove('hidden');
+                }
+            } catch (error) {
+                errorElement.textContent = 'Network error. Please try again.';
+                errorElement.classList.remove('hidden');
+            }
+        }
+
+        async function validateToken(token) {
+            try {
+                // In a real app, you would verify the token with the server
+                // For simplicity, we'll just decode it and assume it's valid
+                const payload = JSON.parse(atob(token.split('.')[1]));
+                
+                // Get user info
+                const response = await fetch('/api/myapps', {
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    }
+                });
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    currentUser = { id: payload.userId, username: payload.username };
+                    showDashboard();
+                    loadUserApps();
+                } else {
+                    throw new Error('Invalid token');
+                }
+            } catch (error) {
+                console.error('Token validation failed:', error);
+                document.cookie = 'token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT';
+                showWelcomeSection();
+            }
+        }
+
+        function logout() {
+            currentUser = null;
+            currentToken = null;
+            document.cookie = 'token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT';
+            
+            if (logsWebSocket) {
+                logsWebSocket.close();
+                logsWebSocket = null;
+            }
+            
+            showWelcomeSection();
+        }
+
+        function showWelcomeSection() {
+            document.getElementById('welcome-section').classList.remove('hidden');
+            document.getElementById('dashboard').classList.add('hidden');
+            document.getElementById('auth-buttons').classList.remove('hidden');
+            document.getElementById('user-info').classList.add('hidden');
+        }
+
+        function showDashboard() {
+            document.getElementById('welcome-section').classList.add('hidden');
+            document.getElementById('dashboard').classList.remove('hidden');
+            document.getElementById('auth-buttons').classList.add('hidden');
+            
+            document.getElementById('username').textContent = currentUser.username;
+            document.getElementById('user-info').classList.remove('hidden');
+        }
+
+        // App management functions
+        function showCreateAppModal() {
+            document.getElementById('create-app-modal').classList.remove('hidden');
+        }
+
+        function hideCreateAppModal() {
+            document.getElementById('create-app-modal').classList.add('hidden');
+            document.getElementById('create-app-error').classList.add('hidden');
+        }
+
+        async function createApp(event) {
+            event.preventDefault();
+            
+            const appName = document.getElementById('app-name').value;
+            const errorElement = document.getElementById('create-app-error');
+            
+            try {
+                const response = await fetch('/api/create-app', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${currentToken}`
+                    },
+                    body: JSON.stringify({ name: appName })
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok) {
+                    hideCreateAppModal();
+                    loadUserApps();
+                } else {
+                    errorElement.textContent = data.error;
+                    errorElement.classList.remove('hidden');
+                }
+            } catch (error) {
+                errorElement.textContent = 'Network error. Please try again.';
+                errorElement.classList.remove('hidden');
+            }
+        }
+
+        async function loadUserApps() {
+            try {
+                const response = await fetch('/api/myapps', {
+                    headers: {
+                        'Authorization': `Bearer ${currentToken}`
+                    }
+                });
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    renderApps(data.apps);
+                } else {
+                    throw new Error('Failed to load apps');
+                }
+            } catch (error) {
+                console.error('Error loading apps:', error);
+            }
+        }
+
+        function renderApps(apps) {
+            const appsList = document.getElementById('apps-list');
+            appsList.innerHTML = '';
+            
+            if (apps.length === 0) {
+                appsList.innerHTML = `
+                    <div class="col-span-full text-center py-8">
+                        <p class="text-gray-500">You don't have any apps yet. Create your first app to get started.</p>
+                    </div>
+                `;
+                return;
+            }
+            
+            apps.forEach(app => {
+                const appCard = document.createElement('div');
+                appCard.className = 'bg-gray-800 p-4 rounded-lg';
+                appCard.innerHTML = `
+                    <h3 class="text-lg font-semibold text-bera-primary mb-2">${app.name}</h3>
+                    <p class="text-sm mb-2">Status: <span class="font-medium ${app.status === 'running' ? 'text-green-400' : app.status === 'deploying' ? 'text-yellow-400' : 'text-red-400'}">${app.status}</span></p>
+                    <p class="text-xs text-gray-400 mb-4 break-all">Git URL: ${app.gitUrl}</p>
+                    <div class="flex flex-wrap gap-2">
+                        ${app.status !== 'running' ? `
+                            <button onclick="startApp('${app._id}')" class="px-3 py-1 bg-green-600 rounded text-xs">Start</button>
+                        ` : `
+                            <button onclick="stopApp('${app._id}')" class="px-3 py-1 bg-red-600 rounded text-xs">Stop</button>
+                        `}
+                        <button onclick="viewLogs('${app._id}')" class="px-3 py-1 bg-bera-secondary rounded text-xs">View Logs</button>
+                        <a href="/apps/${app.name}" target="_blank" class="px-3 py-1 bg-bera-primary text-bera-dark rounded text-xs">Open App</a>
+                    </div>
+                `;
+                appsList.appendChild(appCard);
+            });
+        }
+
+        async function startApp(appId) {
+            try {
+                const response = await fetch(`/api/start/${appId}`, {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${currentToken}`
+                    }
+                });
+                
+                if (response.ok) {
+                    loadUserApps();
+                } else {
+                    const data = await response.json();
+                    alert(`Error: ${data.error}`);
+                }
+            } catch (error) {
+                alert('Failed to start app');
+            }
+        }
+
+        async function stopApp(appId) {
+            try {
+                const response = await fetch(`/api/stop/${appId}`, {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${currentToken}`
+                    }
+                });
+                
+                if (response.ok) {
+                    loadUserApps();
+                } else {
+                    const data = await response.json();
+                    alert(`Error: ${data.error}`);
+                }
+            } catch (error) {
+                alert('Failed to stop app');
+            }
+        }
+
+        function viewLogs(appId) {
+            // Close existing WebSocket connection
+            if (logsWebSocket) {
+                logsWebSocket.close();
+            }
+            
+            currentAppLogs = appId;
+            const logsPanel = document.getElementById('logs-panel');
+            logsPanel.innerHTML = '<p class="text-gray-500">Connecting to logs...</p>';
+            
+            // Connect to WebSocket for real-time logs
+            logsWebSocket = new WebSocket(`ws://${window.location.host}/logs/${appId}?token=${currentToken}`);
+            
+            logsWebSocket.onopen = () => {
+                logsPanel.innerHTML = '<p class="text-gray-500">Connected. Waiting for logs...</p>';
+            };
+            
+            logsWebSocket.onmessage = (event) => {
+                const log = JSON.parse(event.data);
+                const logElement = document.createElement('div');
+                
+                let logClass = 'text-gray-300';
+                if (log.type === 'error') {
+                    logClass = 'text-red-400';
+                } else if (log.type === 'build') {
+                    logClass = 'text-yellow-400';
+                }
+                
+                const timestamp = new Date(log.timestamp).toLocaleTimeString();
+                logElement.innerHTML = `<span class="text-gray-500">[${timestamp}]</span> <span class="${logClass}">${escapeHtml(log.message)}</span>`;
+                logsPanel.appendChild(logElement);
+                logsPanel.scrollTop = logsPanel.scrollHeight;
+            };
+            
+            logsWebSocket.onclose = () => {
+                if (logsPanel.innerHTML.includes('Connected')) {
+                    logsPanel.innerHTML += '<p class="text-gray-500">Disconnected from logs server.</p>';
+                }
+            };
+            
+            // Also load historical logs
+            fetch(`/api/logs/${appId}`, {
+                headers: {
+                    'Authorization': `Bearer ${currentToken}`
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.logs && data.logs.length > 0) {
+                    logsPanel.innerHTML = '';
+                    data.logs.forEach(log => {
+                        const logElement = document.createElement('div');
+                        
+                        let logClass = 'text-gray-300';
+                        if (log.type === 'error') {
+                            logClass = 'text-red-400';
+                        } else if (log.type === 'build') {
+                            logClass = 'text-yellow-400';
+                        }
+                        
+                        const timestamp = new Date(log.timestamp).toLocaleTimeString();
+                        logElement.innerHTML = `<span class="text-gray-500">[${timestamp}]</span> <span class="${logClass}">${escapeHtml(log.message)}</span>`;
+                        logsPanel.appendChild(logElement);
+                    });
+                    logsPanel.scrollTop = logsPanel.scrollHeight;
+                }
+            })
+            .catch(error => {
+                console.error('Error loading historical logs:', error);
+            });
+        }
+
+        // Utility functions
+        function getCookie(name) {
+            const value = `; ${document.cookie}`;
+            const parts = value.split(`; ${name}=`);
+            if (parts.length === 2) return parts.pop().split(';').shift();
+        }
+
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        // Register service worker for PWA
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('/service-worker.js')
+                    .then(registration => {
+                        console.log('SW registered: ', registration);
+                    })
+                    .catch(registrationError => {
+                        console.log('SW registration failed: ', registrationError);
+                    });
+            });
+        }
+    </script>
+</body>
+</html>
