@@ -1,196 +1,220 @@
-const socket = io();
-let currentApp = null;
+document.addEventListener('DOMContentLoaded', function() {
+    const authBtn = document.getElementById('github-auth-btn');
+    const logoutBtn = document.getElementById('logout-btn');
+    const reposSection = document.getElementById('repos-section');
+    const reposList = document.getElementById('repos-list');
+    const modal = document.getElementById('deployment-modal');
+    const closeBtn = document.querySelector('.close');
+    const logsContainer = document.getElementById('deployment-logs');
 
-// DOM elements
-const registerBtn = document.getElementById('register-btn');
-const loginBtn = document.getElementById('login-btn');
-const logoutBtn = document.getElementById('logout-btn');
-const registerForm = document.getElementById('register-form');
-const loginForm = document.getElementById('login-form');
-const dashboard = document.getElementById('dashboard');
-const appsList = document.getElementById('apps-list');
-const appDetails = document.getElementById('app-details');
-const detailAppName = document.getElementById('detail-app-name');
-const detailAppUrl = document.getElementById('detail-app-url');
-const logsContainer = document.getElementById('logs');
+    // Check authentication status
+    checkAuthStatus();
 
-// Event listeners
-registerBtn.addEventListener('click', () => {
-  registerForm.style.display = 'block';
-  loginForm.style.display = 'none';
-});
-
-loginBtn.addEventListener('click', () => {
-  loginForm.style.display = 'block';
-  registerForm.style.display = 'none';
-});
-
-document.getElementById('register-submit').addEventListener('click', register);
-document.getElementById('login-submit').addEventListener('click', login);
-logoutBtn.addEventListener('click', logout);
-document.getElementById('create-app').addEventListener('click', createApp);
-
-// Check if user is logged in
-if (localStorage.getItem('token')) {
-  showDashboard();
-  loadApps();
-}
-
-// Authentication functions
-async function register() {
-  const username = document.getElementById('register-username').value;
-  const password = document.getElementById('register-password').value;
-
-  try {
-    const response = await fetch('/register', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ username, password })
+    // GitHub OAuth
+    authBtn.addEventListener('click', () => {
+        window.location.href = '/auth/github';
     });
 
-    if (response.ok) {
-      alert('Registration successful. Please login.');
-      registerForm.style.display = 'none';
-    } else {
-      alert('Registration failed');
-    }
-  } catch (error) {
-    console.error('Registration error:', error);
-  }
-}
-
-async function login() {
-  const username = document.getElementById('login-username').value;
-  const password = document.getElementById('login-password').value;
-
-  try {
-    const response = await fetch('/login', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ username, password })
+    // Logout
+    logoutBtn.addEventListener('click', async () => {
+        try {
+            const response = await fetch('/api/logout', {
+                method: 'POST'
+            });
+            
+            if (response.ok) {
+                checkAuthStatus();
+            }
+        } catch (error) {
+            console.error('Logout error:', error);
+        }
     });
 
-    if (response.ok) {
-      const data = await response.json();
-      localStorage.setItem('token', data.token);
-      showDashboard();
-      loadApps();
-    } else {
-      alert('Login failed');
-    }
-  } catch (error) {
-    console.error('Login error:', error);
-  }
-}
-
-function logout() {
-  localStorage.removeItem('token');
-  document.getElementById('auth-forms').style.display = 'block';
-  dashboard.style.display = 'none';
-  logoutBtn.style.display = 'none';
-  loginBtn.style.display = 'inline-block';
-  registerBtn.style.display = 'inline-block';
-}
-
-function showDashboard() {
-  document.getElementById('auth-forms').style.display = 'none';
-  dashboard.style.display = 'block';
-  logoutBtn.style.display = 'inline-block';
-  loginBtn.style.display = 'none';
-  registerBtn.style.display = 'none';
-}
-
-// App management functions
-async function loadApps() {
-  try {
-    const response = await fetch('/apps', {
-      headers: {
-        'Authorization': `Bearer ${localStorage.getItem('token')}`
-      }
+    // Close modal
+    closeBtn.addEventListener('click', () => {
+        modal.style.display = 'none';
     });
 
-    if (response.ok) {
-      const apps = await response.json();
-      renderApps(apps);
-    }
-  } catch (error) {
-    console.error('Error loading apps:', error);
-  }
-}
-
-function renderApps(apps) {
-  appsList.innerHTML = '';
-  apps.forEach(app => {
-    const appElement = document.createElement('div');
-    appElement.className = 'app-item';
-    appElement.innerHTML = `
-      <h3>${app.name}</h3>
-      <p>Status: ${app.status}</p>
-      <p>URL: <a href="https://${app.subdomain}" target="_blank">${app.subdomain}</a></p>
-      <button class="view-logs" data-app="${app.name}">View Logs</button>
-    `;
-    appsList.appendChild(appElement);
-  });
-
-  // Add event listeners to view logs buttons
-  document.querySelectorAll('.view-logs').forEach(button => {
-    button.addEventListener('click', (e) => {
-      const appName = e.target.getAttribute('data-app');
-      showAppDetails(appName);
-    });
-  });
-}
-
-async function createApp() {
-  const appName = document.getElementById('app-name').value;
-  
-  try {
-    const response = await fetch('/apps', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${localStorage.getItem('token')}`
-      },
-      body: JSON.stringify({ name: appName })
+    window.addEventListener('click', (event) => {
+        if (event.target === modal) {
+            modal.style.display = 'none';
+        }
     });
 
-    if (response.ok) {
-      loadApps();
-      document.getElementById('app-name').value = '';
-    } else {
-      alert('Error creating app');
+    // Check authentication status
+    async function checkAuthStatus() {
+        try {
+            const response = await fetch('/api/user');
+            const data = await response.json();
+            
+            if (data.authenticated) {
+                authBtn.style.display = 'none';
+                logoutBtn.style.display = 'inline-block';
+                reposSection.style.display = 'block';
+                loadRepositories();
+            } else {
+                authBtn.style.display = 'inline-block';
+                logoutBtn.style.display = 'none';
+                reposSection.style.display = 'none';
+            }
+        } catch (error) {
+            console.error('Auth check error:', error);
+        }
     }
-  } catch (error) {
-    console.error('Error creating app:', error);
-  }
-}
 
-function showAppDetails(appName) {
-  currentApp = appName;
-  appDetails.style.display = 'block';
-  detailAppName.textContent = appName;
-  
-  // Find the app URL
-  const apps = document.querySelectorAll('.app-item');
-  apps.forEach(app => {
-    if (app.querySelector('h3').textContent === appName) {
-      const url = app.querySelector('a').href;
-      detailAppUrl.href = url;
-      detailAppUrl.textContent = url;
+    // Load user repositories
+    async function loadRepositories() {
+        try {
+            const response = await fetch('/api/repos');
+            const repos = await response.json();
+            
+            displayRepositories(repos);
+        } catch (error) {
+            console.error('Error loading repositories:', error);
+        }
     }
-  });
-  
-  // Clear logs and listen for new ones
-  logsContainer.innerHTML = '';
-  socket.emit('join-app', appName);
-}
 
-// Socket.io for logs
-socket.on('log', (data) => {
-  if (currentApp) {
-    const logEntry = document.createElement('div');
-    logEntry.textContent = data;
-    logsContainer.appendChild(logEntry);
-    logsContainer.scrollTop = logsContainer.scrollHeight;
-  }
+    // Display repositories
+    function displayRepositories(repos) {
+        reposList.innerHTML = '';
+        
+        repos.forEach(repo => {
+            const repoCard = document.createElement('div');
+            repoCard.className = 'repo-card';
+            
+            repoCard.innerHTML = `
+                <div class="repo-name">${repo.name}</div>
+                <div class="repo-description">${repo.description || 'No description'}</div>
+                <div class="repo-meta">
+                    <span>⭐ ${repo.stargazers_count}</span>
+                    <span>${repo.language || 'Unknown'}</span>
+                    <span>Updated: ${new Date(repo.updated_at).toLocaleDateString()}</span>
+                </div>
+                <div class="repo-actions">
+                    <button class="btn btn-success deploy-btn" data-owner="${repo.owner.login}" data-repo="${repo.name}">
+                        Deploy
+                    </button>
+                    <button class="btn btn-primary logs-btn" data-owner="${repo.owner.login}" data-repo="${repo.name}">
+                        View Logs
+                    </button>
+                </div>
+                <div id="status-${repo.owner.login}-${repo.name}" class="status-container"></div>
+            `;
+            
+            reposList.appendChild(repoCard);
+            checkDeploymentStatus(repo.owner.login, repo.name);
+        });
+
+        // Add event listeners to buttons
+        document.querySelectorAll('.deploy-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                const owner = e.target.dataset.owner;
+                const repo = e.target.dataset.repo;
+                deployRepository(owner, repo);
+            });
+        });
+
+        document.querySelectorAll('.logs-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                const owner = e.target.dataset.owner;
+                const repo = e.target.dataset.repo;
+                viewLogs(owner, repo);
+            });
+        });
+    }
+
+    // Deploy repository
+    async function deployRepository(owner, repo) {
+        try {
+            logsContainer.innerHTML = 'Starting deployment...';
+            modal.style.display = 'block';
+            
+            const response = await fetch(`/api/deploy/${owner}/${repo}`, {
+                method: 'POST'
+            });
+            
+            const data = await response.json();
+            
+            if (data.success) {
+                // Poll logs for updates
+                pollLogs(owner, repo);
+                checkDeploymentStatus(owner, repo);
+            } else {
+                logsContainer.innerHTML = `Deployment failed: ${data.error}`;
+            }
+        } catch (error) {
+            console.error('Deployment error:', error);
+            logsContainer.innerHTML = `Deployment error: ${error.message}`;
+        }
+    }
+
+    // View deployment logs
+    async function viewLogs(owner, repo) {
+        try {
+            logsContainer.innerHTML = 'Loading logs...';
+            modal.style.display = 'block';
+            
+            const response = await fetch(`/api/logs/${owner}/${repo}`);
+            const data = await response.json();
+            
+            logsContainer.innerHTML = data.logs || 'No logs available';
+        } catch (error) {
+            console.error('Error loading logs:', error);
+            logsContainer.innerHTML = `Error loading logs: ${error.message}`;
+        }
+    }
+
+    // Poll logs for updates during deployment
+    async function pollLogs(owner, repo) {
+        const interval = setInterval(async () => {
+            try {
+                const response = await fetch(`/api/logs/${owner}/${repo}`);
+                const data = await response.json();
+                
+                if (data.logs) {
+                    logsContainer.innerHTML = data.logs;
+                    logsContainer.scrollTop = logsContainer.scrollHeight;
+                }
+                
+                // Check if deployment is complete
+                const statusResponse = await fetch(`/api/status/${owner}/${repo}`);
+                const statusData = await statusResponse.json();
+                
+                if (statusData.running) {
+                    clearInterval(interval);
+                    checkDeploymentStatus(owner, repo);
+                }
+            } catch (error) {
+                console.error('Error polling logs:', error);
+            }
+        }, 2000);
+    }
+
+    // Check deployment status
+    async function checkDeploymentStatus(owner, repo) {
+        try {
+            const response = await fetch(`/api/status/${owner}/${repo}`);
+            const data = await response.json();
+            
+            const statusElement = document.getElementById(`status-${owner}-${repo}`);
+            if (statusElement) {
+                let statusClass = 'status-stopped';
+                let statusText = 'Not deployed';
+                
+                if (data.running) {
+                    statusClass = 'status-running';
+                    statusText = 'Running';
+                } else if (data.status === 'created' || data.status === 'restarting') {
+                    statusClass = 'status-building';
+                    statusText = 'Building';
+                }
+                
+                statusElement.innerHTML = `
+                    <span class="status-badge ${statusClass}">${statusText}</span>
+                `;
+            }
+        } catch (error) {
+            console.error('Error checking status:', error);
+        }
+    }
 });
