@@ -1,318 +1,275 @@
-const express = require('express');
-const session = require('express-session');
-const axios = require('axios');
-const simpleGit = require('simple-git');
-const Docker = require('dockerode');
-const fs = require('fs-extra');
-const path = require('path');
-const cors = require('cors');
-const morgan = require('morgan');
 require('dotenv').config();
+const express = require('express');
+const mongoose = require('mongoose');
+const session = require('express-session');
+const bcrypt = require('bcryptjs');
+const multer = require('multer');
+const path = require('path');
+const http = require('http');
+const socketIo = require('socket.io');
+const { OpenAI } = require('openai');
+const cors = require('cors');
 
 const app = express();
-const PORT = process.env.PORT || 3000;
+const server = http.createServer(app);
+const io = socketIo(server);
 
 // Middleware
 app.use(cors());
-app.use(morgan('combined'));
 app.use(express.json());
-app.use(express.static('public'));
+app.use(express.urlencoded({ extended: true }));
+app.use(express.static(__dirname));
 app.use(session({
-  secret: process.env.SESSION_SECRET || 'your-secret-key',
+  secret: process.env.SESSION_SECRET || 'devs-place-secret-key-2024',
   resave: false,
   saveUninitialized: false,
-  cookie: { secure: false }
+  cookie: { secure: false, maxAge: 24 * 60 * 60 * 1000 } // 24 hours
 }));
 
-// Docker client
-const docker = new Docker();
+// File upload configuration
+const storage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    cb(null, 'uploads/');
+  },
+  filename: (req, file, cb) => {
+    cb(null, Date.now() + '-' + file.originalname);
+  }
+});
 
-// Use relative paths instead of absolute paths
-const dataDir = path.join(__dirname, 'data');
-const logsDir = path.join(dataDir, 'logs');
-const reposDir = path.join(dataDir, 'repos');
+const upload = multer({
+  storage: storage,
+  limits: { fileSize: 10 * 1024 * 1024 }, // 10MB limit
+  fileFilter: (req, file, cb) => {
+    const allowedTypes = {
+      'text/plain': ['.txt', '.md'],
+      'text/html': ['.html', '.htm'],
+      'text/css': ['.css'],
+      'application/javascript': ['.js'],
+      'application/json': ['.json'],
+      'application/x-python-code': ['.py'],
+      'text/x-java': ['.java'],
+      'application/pdf': ['.pdf'],
+      'application/msword': ['.doc'],
+      'application/vnd.openxmlformats-officedocument.wordprocessingml.document': ['.docx'],
+      'image/png': ['.png'],
+      'image/jpeg': ['.jpg', '.jpeg'],
+      'image/svg+xml': ['.svg'],
+      'application/zip': ['.zip'],
+      'application/x-tar': ['.tar.gz']
+    };
+    
+    const fileExt = path.extname(file.originalname).toLowerCase();
+    const mimeType = file.mimetype;
+    
+    if (allowedTypes[mimeType] && allowedTypes[mimeType].includes(fileExt)) {
+      cb(null, true);
+    } else {
+      cb(new Error('Invalid file type'), false);
+    }
+  }
+});
 
-// Ensure data directories exist
-try {
-  fs.ensureDirSync(logsDir);
-  fs.ensureDirSync(reposDir);
-  console.log(`Data directories created at: ${dataDir}`);
-} catch (error) {
-  console.error('Error creating data directories:', error);
-}
+// OpenAI configuration
+const openai = new OpenAI({
+  apiKey: process.env.OPENAI_API_KEY
+});
 
-// GitHub OAuth configuration
-const GITHUB_CLIENT_ID = process.env.GITHUB_CLIENT_ID;
-const GITHUB_CLIENT_SECRET = process.env.GITHUB_CLIENT_SECRET;
-const GITHUB_CALLBACK_URL = process.env.GITHUB_CALLBACK_URL || 'http://localhost:3000/auth/github/callback';
+// MongoDB connection
+mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/devsplace', {
+  useNewUrlParser: true,
+  useUnifiedTopology: true,
+});
+
+// Simple in-memory storage for demo (replace with MongoDB in production)
+const users = new Map();
+const projects = [];
+const messages = [];
 
 // Routes
-
-// Redirect to GitHub OAuth
-app.get('/auth/github', (req, res) => {
-  const redirectUri = `https://github.com/login/oauth/authorize?client_id=${GITHUB_CLIENT_ID}&redirect_uri=${encodeURIComponent(GITHUB_CALLBACK_URL)}&scope=repo,user`;
-  res.redirect(redirectUri);
-});
-
-// GitHub OAuth callback
-app.get('/auth/github/callback', async (req, res) => {
-  const { code } = req.query;
-
+// Authentication routes
+app.post('/auth/register', async (req, res) => {
   try {
-    // Exchange code for access token
-    const tokenResponse = await axios.post('https://github.com/login/oauth/access_token', {
-      client_id: GITHUB_CLIENT_ID,
-      client_secret: GITHUB_CLIENT_SECRET,
-      code,
-      redirect_uri: GITHUB_CALLBACK_URL
-    }, {
-      headers: { Accept: 'application/json' }
-    });
-
-    const { access_token } = tokenResponse.data;
-    req.session.githubToken = access_token;
+    const { username, email, password } = req.body;
     
-    // Redirect to dashboard
-    res.redirect('/');
-  } catch (error) {
-    console.error('OAuth error:', error);
-    res.status(500).send('Authentication failed');
-  }
-});
-
-// Get user repositories
-app.get('/api/repos', async (req, res) => {
-  const token = req.session.githubToken;
-  
-  if (!token) {
-    return res.status(401).json({ error: 'Not authenticated' });
-  }
-
-  try {
-    const response = await axios.get('https://api.github.com/user/repos', {
-      headers: {
-        Authorization: `Bearer ${token}`,
-        Accept: 'application/vnd.github.v3+json'
-      },
-      params: {
-        sort: 'updated',
-        direction: 'desc'
-      }
-    });
-
-    res.json(response.data);
-  } catch (error) {
-    console.error('GitHub API error:', error);
-    res.status(500).json({ error: 'Failed to fetch repositories' });
-  }
-});
-
-// Deploy a repository
-app.post('/api/deploy/:owner/:repo', async (req, res) => {
-  const { owner, repo } = req.params;
-  const token = req.session.githubToken;
-  
-  if (!token) {
-    return res.status(401).json({ error: 'Not authenticated' });
-  }
-
-  const repoUrl = `https://${token}@github.com/${owner}/${repo}.git`;
-  const workDir = path.join(reposDir, owner, repo);
-  const logFile = path.join(logsDir, `${owner}-${repo}.log`);
-
-  try {
-    // Ensure working directory exists
-    await fs.ensureDir(workDir);
+    if (users.has(email)) {
+      return res.status(400).json({ error: 'User already exists' });
+    }
     
-    // Initialize log file
-    await fs.writeFile(logFile, `Starting deployment for ${owner}/${repo} at ${new Date().toISOString()}\n`);
-
-    const appendLog = async (message) => {
-      console.log(message);
-      await fs.appendFile(logFile, message + '\n');
+    const hashedPassword = await bcrypt.hash(password, 12);
+    const user = {
+      id: Date.now().toString(),
+      username,
+      email,
+      password: hashedPassword,
+      createdAt: new Date()
     };
-
-    // Clone or pull repository
-    const git = simpleGit(workDir);
     
-    await appendLog(`Cloning repository from ${repoUrl.replace(token, '***')}`);
+    users.set(email, user);
+    req.session.userId = user.id;
+    req.session.username = user.username;
     
-    if (await fs.pathExists(path.join(workDir, '.git'))) {
-      await git.pull();
-      await appendLog('Repository pulled successfully');
-    } else {
-      await git.clone(repoUrl, workDir);
-      await appendLog('Repository cloned successfully');
-    }
-
-    // Check if Dockerfile exists
-    if (!await fs.pathExists(path.join(workDir, 'Dockerfile'))) {
-      await appendLog('ERROR: No Dockerfile found in repository');
-      return res.status(400).json({ error: 'No Dockerfile found in repository' });
-    }
-
-    // Build Docker image
-    await appendLog('Building Docker image...');
-    const imageName = `app-${owner}-${repo}`.toLowerCase().replace(/[^a-z0-9]/g, '-');
-    
-    const stream = await docker.buildImage({
-      context: workDir,
-      src: ['Dockerfile', '.dockerignore', 'package.json', 'app.js', 'index.js', 'server.js'].filter(f => 
-        fs.existsSync(path.join(workDir, f))
-      )
-    }, { t: imageName });
-
-    await new Promise((resolve, reject) => {
-      docker.modem.followProgress(stream, (err, res) => err ? reject(err) : resolve(res));
-    });
-    
-    await appendLog('Docker image built successfully');
-
-    // Stop and remove existing container if it exists
-    try {
-      const containers = await docker.listContainers({ all: true });
-      const existingContainer = containers.find(c => c.Names.includes(`/${imageName}`));
-      
-      if (existingContainer) {
-        const container = docker.getContainer(existingContainer.Id);
-        await container.stop();
-        await container.remove();
-        await appendLog('Stopped and removed existing container');
-      }
-    } catch (err) {
-      // Container might not exist, which is fine
-      await appendLog('No existing container to remove');
-    }
-
-    // Find available port
-    const usedPorts = new Set();
-    const containers = await docker.listContainers({ all: true });
-    containers.forEach(container => {
-      container.Ports.forEach(port => {
-        if (port.PublicPort) usedPorts.add(port.PublicPort);
-      });
-    });
-
-    let port = 10000;
-    while (usedPorts.has(port)) port++;
-    
-    await appendLog(`Using port ${port} for deployment`);
-
-    // Run container
-    const container = await docker.createContainer({
-      Image: imageName,
-      name: imageName,
-      ExposedPorts: { '3000/tcp': {} },
-      HostConfig: {
-        PortBindings: { '3000/tcp': [{ HostPort: port.toString() }] }
-      }
-    });
-
-    await container.start();
-    await appendLog('Container started successfully');
-
-    // Create nginx configuration
-    const domain = process.env.DOMAIN || 'bera.karenbishop.online';
-    const subdomain = `${repo}.${domain}`;
-    
-    const nginxConf = `
-server {
-    listen 80;
-    server_name ${subdomain};
-    
-    location / {
-        proxy_pass http://localhost:${port};
-        proxy_set_header Host $host;
-        proxy_set_header X-Real-IP $remote_addr;
-        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto $scheme;
-    }
-}
-`;
-
-    const nginxConfDir = path.join(__dirname, 'conf.d');
-    await fs.ensureDir(nginxConfDir);
-    const nginxConfPath = path.join(nginxConfDir, `${subdomain}.conf`);
-    await fs.writeFile(nginxConfPath, nginxConf);
-    await appendLog(`Nginx configuration created at ${nginxConfPath}`);
-
-    // Reload nginx (this would be handled by the nginx container)
-    await appendLog('Nginx configuration created. Manual reload may be needed.');
-    await appendLog(`Deployment complete! Your app will be available at http://${subdomain}`);
-
-    res.json({ 
-      success: true, 
-      message: 'Deployment started', 
-      url: `http://${subdomain}`,
-      logFile 
-    });
-
+    res.json({ success: true, user: { username: user.username, email: user.email } });
   } catch (error) {
-    console.error('Deployment error:', error);
-    const errorMessage = `Deployment failed: ${error.message}`;
-    try {
-      await fs.appendFile(logFile, errorMessage + '\n');
-    } catch (e) {
-      console.error('Failed to write to log file:', e);
-    }
-    res.status(500).json({ error: errorMessage });
+    res.status(500).json({ error: 'Registration failed' });
   }
 });
 
-// Get deployment logs
-app.get('/api/logs/:owner/:repo', async (req, res) => {
-  const { owner, repo } = req.params;
-  const logFile = path.join(logsDir, `${owner}-${repo}.log`);
-  
+app.post('/auth/login', async (req, res) => {
   try {
-    if (await fs.pathExists(logFile)) {
-      const logs = await fs.readFile(logFile, 'utf8');
-      res.json({ logs });
-    } else {
-      res.json({ logs: 'No logs available' });
-    }
-  } catch (error) {
-    res.status(500).json({ error: 'Failed to read logs' });
-  }
-});
-
-// Get deployment status
-app.get('/api/status/:owner/:repo', async (req, res) => {
-  const { owner, repo } = req.params;
-  const containerName = `app-${owner}-${repo}`.toLowerCase().replace(/[^a-z0-9]/g, '-');
-  
-  try {
-    const containers = await docker.listContainers({ all: true });
-    const containerInfo = containers.find(c => c.Names.includes(`/${containerName}`));
+    const { email, password } = req.body;
+    const user = users.get(email);
     
-    if (containerInfo) {
-      const container = docker.getContainer(containerInfo.Id);
-      const info = await container.inspect();
-      res.json({ status: info.State.Status, running: info.State.Running });
-    } else {
-      res.json({ status: 'not deployed', running: false });
+    if (!user || !(await bcrypt.compare(password, user.password))) {
+      return res.status(401).json({ error: 'Invalid credentials' });
     }
+    
+    req.session.userId = user.id;
+    req.session.username = user.username;
+    
+    res.json({ success: true, user: { username: user.username, email: user.email } });
   } catch (error) {
-    res.json({ status: 'not deployed', running: false });
+    res.status(500).json({ error: 'Login failed' });
   }
 });
 
-// Check authentication status
-app.get('/api/user', (req, res) => {
-  if (req.session.githubToken) {
-    res.json({ authenticated: true });
-  } else {
-    res.json({ authenticated: false });
-  }
-});
-
-// Logout
-app.post('/api/logout', (req, res) => {
+app.post('/auth/logout', (req, res) => {
   req.session.destroy();
   res.json({ success: true });
 });
 
-app.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
-  console.log(`Data directory: ${dataDir}`);
+app.get('/auth/check', (req, res) => {
+  if (req.session.userId) {
+    res.json({ loggedIn: true, username: req.session.username });
+  } else {
+    res.json({ loggedIn: false });
+  }
+});
+
+// File upload route
+app.post('/upload', upload.array('files', 5), (req, res) => {
+  try {
+    const files = req.files.map(file => ({
+      filename: file.filename,
+      originalname: file.originalname,
+      path: file.path,
+      size: file.size,
+      mimetype: file.mimetype,
+      uploadedAt: new Date()
+    }));
+    
+    res.json({ success: true, files });
+  } catch (error) {
+    res.status(500).json({ error: 'Upload failed' });
+  }
+});
+
+// Projects routes
+app.get('/projects', (req, res) => {
+  res.json(projects);
+});
+
+app.post('/projects', (req, res) => {
+  if (!req.session.userId) {
+    return res.status(401).json({ error: 'Not authenticated' });
+  }
+  
+  const project = {
+    id: Date.now().toString(),
+    title: req.body.title,
+    description: req.body.description,
+    code: req.body.code,
+    files: req.body.files || [],
+    author: req.session.username,
+    createdAt: new Date(),
+    comments: []
+  };
+  
+  projects.unshift(project);
+  res.json({ success: true, project });
+});
+
+app.post('/projects/:id/comments', (req, res) => {
+  if (!req.session.userId) {
+    return res.status(401).json({ error: 'Not authenticated' });
+  }
+  
+  const project = projects.find(p => p.id === req.params.id);
+  if (!project) {
+    return res.status(404).json({ error: 'Project not found' });
+  }
+  
+  const comment = {
+    id: Date.now().toString(),
+    author: req.session.username,
+    content: req.body.content,
+    createdAt: new Date()
+  };
+  
+  project.comments.push(comment);
+  res.json({ success: true, comment });
+});
+
+// AI Assistant route
+app.post('/devs-ai', async (req, res) => {
+  try {
+    if (!process.env.OPENAI_API_KEY) {
+      return res.status(500).json({ error: 'AI service not configured' });
+    }
+    
+    const { question } = req.body;
+    
+    const completion = await openai.chat.completions.create({
+      model: "gpt-3.5-turbo",
+      messages: [
+        {
+          role: "system",
+          content: "You are a helpful coding assistant. Provide detailed, practical answers with code examples when relevant. Format code blocks properly."
+        },
+        {
+          role: "user",
+          content: question
+        }
+      ],
+      max_tokens: 1000
+    });
+    
+    const answer = completion.choices[0].message.content;
+    res.json({ success: true, answer });
+  } catch (error) {
+    console.error('AI Error:', error);
+    res.status(500).json({ error: 'AI service error' });
+  }
+});
+
+// Socket.io for real-time chat
+io.on('connection', (socket) => {
+  console.log('User connected:', socket.id);
+  
+  // Send message history to new user
+  socket.emit('messageHistory', messages.slice(-50));
+  
+  socket.on('sendMessage', (data) => {
+    const message = {
+      id: Date.now().toString(),
+      username: data.username,
+      text: data.text,
+      file: data.file,
+      timestamp: new Date()
+    };
+    
+    messages.push(message);
+    
+    // Broadcast to all connected clients
+    io.emit('newMessage', message);
+  });
+  
+  socket.on('disconnect', () => {
+    console.log('User disconnected:', socket.id);
+  });
+});
+
+const PORT = process.env.PORT || 3000;
+server.listen(PORT, () => {
+  console.log(`Devs Place server running on port ${PORT}`);
+  console.log('Make sure to create an "uploads" directory for file storage');
 });
