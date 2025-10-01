@@ -3,63 +3,198 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Devs Place</title>
+    <title>Devs Place - Developer Community</title>
     <link rel="stylesheet" href="style.css">
-    <!-- Prism.js for syntax highlighting -->
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.24.1/themes/prism-tomorrow.min.css" rel="stylesheet" />
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.24.1/prism.min.js"></script>
-    <script src="/socket.io/socket.io.js"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.24.1/themes/prism-tomorrow.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
 </head>
 <body>
     <div id="app">
-        <header id="main-header">
-            <h1 id="logo">Devs Place</h1>
-            <nav id="main-nav">
-                <ul>
-                    <li><a href="#" class="nav-link" data-section="projects">Project Feed</a></li>
-                    <li><a href="#" class="nav-link" data-section="chat">Chatroom</a></li>
-                    <li><a href="#" class="nav-link" data-section="ai">Devs AI</a></li>
-                    <li id="auth-section"></li>
-                </ul>
-            </nav>
-        </header>
-
-        <main>
-            <!-- Dynamic sections will be loaded here -->
-            <section id="auth-forms" class="active">
-                <!-- Login and Signup forms will be displayed here by script.js -->
-            </section>
-
-            <section id="projects-section" class="hidden">
-                <h2>Project Feed</h2>
-                <div id="projects-container"></div>
-            </section>
-
-            <section id="chat-section" class="hidden">
-                <h2>Global Chatroom</h2>
-                <div id="chat-messages"></div>
-                <div id="chat-input-area">
-                    <input type="text" id="message-input" placeholder="Type your message...">
-                    <input type="file" id="file-upload" multiple>
-                    <button onclick="sendMessage()">Send</button>
+        <!-- Auth Section -->
+        <div id="auth-section" class="section active">
+            <div class="auth-container">
+                <div class="auth-header">
+                    <h1><i class="fas fa-code"></i> Devs Place</h1>
+                    <p>Connect, Collaborate, Code</p>
                 </div>
-            </section>
-
-            <section id="ai-section" class="hidden">
-                <h2>Devs AI Assistant</h2>
-                <div id="ai-chat"></div>
-                <div id="ai-input">
-                    <input type="text" id="ai-question" placeholder="Ask a coding question...">
-                    <button onclick="askAI()">Ask</button>
+                
+                <div class="auth-forms">
+                    <div class="form-container active" id="login-form">
+                        <h2>Welcome Back</h2>
+                        <form id="loginForm">
+                            <div class="form-group">
+                                <input type="email" id="loginEmail" placeholder="Email" required>
+                            </div>
+                            <div class="form-group">
+                                <input type="password" id="loginPassword" placeholder="Password" required>
+                            </div>
+                            <button type="submit" class="btn btn-primary">Sign In</button>
+                        </form>
+                        <p class="auth-switch">Don't have an account? <a href="#" id="showRegister">Sign Up</a></p>
+                    </div>
+                    
+                    <div class="form-container" id="register-form">
+                        <h2>Join Devs Place</h2>
+                        <form id="registerForm">
+                            <div class="form-group">
+                                <input type="text" id="registerUsername" placeholder="Username" required>
+                            </div>
+                            <div class="form-group">
+                                <input type="email" id="registerEmail" placeholder="Email" required>
+                            </div>
+                            <div class="form-group">
+                                <input type="password" id="registerPassword" placeholder="Password" required>
+                            </div>
+                            <button type="submit" class="btn btn-primary">Create Account</button>
+                        </form>
+                        <p class="auth-switch">Already have an account? <a href="#" id="showLogin">Sign In</a></p>
+                    </div>
                 </div>
-            </section>
-        </main>
+            </div>
+        </div>
 
-        <footer id="main-footer">
-            <p>&copy; 2025 Devs Place. For developers, by developers.</p>
-        </footer>
+        <!-- Main App Section -->
+        <div id="main-app" class="section">
+            <!-- Header -->
+            <header class="app-header">
+                <div class="header-left">
+                    <h1><i class="fas fa-code"></i> Devs Place</h1>
+                </div>
+                <div class="header-right">
+                    <span id="welcome-user">Welcome, </span>
+                    <button id="logout-btn" class="btn btn-outline">Logout</button>
+                </div>
+            </header>
+
+            <!-- Main Content -->
+            <div class="app-container">
+                <!-- Sidebar -->
+                <aside class="sidebar">
+                    <div class="user-profile">
+                        <div class="avatar">
+                            <i class="fas fa-user"></i>
+                        </div>
+                        <h3 id="sidebar-username">User</h3>
+                    </div>
+                    
+                    <nav class="sidebar-nav">
+                        <a href="#" class="nav-item active" data-tab="projects">
+                            <i class="fas fa-project-diagram"></i>
+                            <span>Project Feed</span>
+                        </a>
+                        <a href="#" class="nav-item" data-tab="chat">
+                            <i class="fas fa-comments"></i>
+                            <span>Global Chat</span>
+                        </a>
+                        <a href="#" class="nav-item" data-tab="ai">
+                            <i class="fas fa-robot"></i>
+                            <span>Devs AI</span>
+                        </a>
+                    </nav>
+                </aside>
+
+                <!-- Content Area -->
+                <main class="content">
+                    <!-- Projects Tab -->
+                    <div id="projects-tab" class="tab-content active">
+                        <div class="tab-header">
+                            <h2>Project Feed</h2>
+                            <button id="new-project-btn" class="btn btn-primary">
+                                <i class="fas fa-plus"></i> New Project
+                            </button>
+                        </div>
+                        
+                        <div class="projects-grid" id="projects-container">
+                            <!-- Projects will be loaded here -->
+                        </div>
+                    </div>
+
+                    <!-- Chat Tab -->
+                    <div id="chat-tab" class="tab-content">
+                        <div class="tab-header">
+                            <h2>Global Chatroom</h2>
+                        </div>
+                        
+                        <div class="chat-container">
+                            <div class="chat-messages" id="chat-messages">
+                                <!-- Messages will appear here -->
+                            </div>
+                            
+                            <div class="chat-input-container">
+                                <div class="file-upload-area">
+                                    <input type="file" id="file-upload" multiple style="display: none;">
+                                    <button id="file-btn" class="btn btn-outline">
+                                        <i class="fas fa-paperclip"></i>
+                                    </button>
+                                    <span id="file-names"></span>
+                                </div>
+                                <input type="text" id="message-input" placeholder="Type your message...">
+                                <button id="send-btn" class="btn btn-primary">
+                                    <i class="fas fa-paper-plane"></i>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- AI Tab -->
+                    <div id="ai-tab" class="tab-content">
+                        <div class="tab-header">
+                            <h2>Devs AI Assistant</h2>
+                        </div>
+                        
+                        <div class="ai-container">
+                            <div class="ai-chat" id="ai-chat">
+                                <div class="ai-message bot">
+                                    <div class="message-content">
+                                        <strong>Devs AI:</strong> Hello! I'm your coding assistant. Ask me anything about programming, and I'll help you with code examples, explanations, and best practices.
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="ai-input-container">
+                                <textarea id="ai-question" placeholder="Ask a coding question... (e.g., 'How to implement authentication in Node.js?')" rows="3"></textarea>
+                                <button id="ask-ai-btn" class="btn btn-primary">
+                                    <i class="fas fa-rocket"></i> Ask AI
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </main>
+            </div>
+        </div>
     </div>
 
+    <!-- Modals -->
+    <div id="project-modal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Share New Project</h3>
+                <span class="close">&times;</span>
+            </div>
+            <form id="project-form">
+                <div class="form-group">
+                    <input type="text" id="project-title" placeholder="Project Title" required>
+                </div>
+                <div class="form-group">
+                    <textarea id="project-description" placeholder="Project Description" rows="3" required></textarea>
+                </div>
+                <div class="form-group">
+                    <textarea id="project-code" placeholder="Paste your code here (optional)" rows="6"></textarea>
+                </div>
+                <div class="form-actions">
+                    <button type="button" class="btn btn-outline" id="cancel-project">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Share Project</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.24.1/prism.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.24.1/components/prism-javascript.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.24.1/components/prism-python.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.24.1/components/prism-java.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.24.1/components/prism-css.min.js"></script>
+    <script src="/socket.io/socket.io.js"></script>
     <script src="script.js"></script>
 </body>
-    </html>
+                        </html>
