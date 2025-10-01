@@ -3,35 +3,63 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Bera PaaS - Deploy Your Apps</title>
+    <title>Devs Place</title>
     <link rel="stylesheet" href="style.css">
+    <!-- Prism.js for syntax highlighting -->
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.24.1/themes/prism-tomorrow.min.css" rel="stylesheet" />
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.24.1/prism.min.js"></script>
+    <script src="/socket.io/socket.io.js"></script>
 </head>
 <body>
-    <div class="container">
-        <header>
-            <h1>Bera PaaS</h1>
-            <p>Deploy your GitHub repositories with ease</p>
+    <div id="app">
+        <header id="main-header">
+            <h1 id="logo">Devs Place</h1>
+            <nav id="main-nav">
+                <ul>
+                    <li><a href="#" class="nav-link" data-section="projects">Project Feed</a></li>
+                    <li><a href="#" class="nav-link" data-section="chat">Chatroom</a></li>
+                    <li><a href="#" class="nav-link" data-section="ai">Devs AI</a></li>
+                    <li id="auth-section"></li>
+                </ul>
+            </nav>
         </header>
 
-        <div id="auth-section">
-            <button id="github-auth-btn" class="btn btn-primary">Connect with GitHub</button>
-            <button id="logout-btn" class="btn btn-secondary" style="display: none;">Logout</button>
-        </div>
+        <main>
+            <!-- Dynamic sections will be loaded here -->
+            <section id="auth-forms" class="active">
+                <!-- Login and Signup forms will be displayed here by script.js -->
+            </section>
 
-        <div id="repos-section" style="display: none;">
-            <h2>Your Repositories</h2>
-            <div id="repos-list" class="repos-grid"></div>
-        </div>
+            <section id="projects-section" class="hidden">
+                <h2>Project Feed</h2>
+                <div id="projects-container"></div>
+            </section>
 
-        <div id="deployment-modal" class="modal">
-            <div class="modal-content">
-                <span class="close">&times;</span>
-                <h2>Deployment Logs</h2>
-                <div id="deployment-logs" class="logs-container"></div>
-            </div>
-        </div>
+            <section id="chat-section" class="hidden">
+                <h2>Global Chatroom</h2>
+                <div id="chat-messages"></div>
+                <div id="chat-input-area">
+                    <input type="text" id="message-input" placeholder="Type your message...">
+                    <input type="file" id="file-upload" multiple>
+                    <button onclick="sendMessage()">Send</button>
+                </div>
+            </section>
+
+            <section id="ai-section" class="hidden">
+                <h2>Devs AI Assistant</h2>
+                <div id="ai-chat"></div>
+                <div id="ai-input">
+                    <input type="text" id="ai-question" placeholder="Ask a coding question...">
+                    <button onclick="askAI()">Ask</button>
+                </div>
+            </section>
+        </main>
+
+        <footer id="main-footer">
+            <p>&copy; 2025 Devs Place. For developers, by developers.</p>
+        </footer>
     </div>
 
     <script src="script.js"></script>
 </body>
-</html>
+    </html>
