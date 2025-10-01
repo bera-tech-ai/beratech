@@ -1,220 +1,161 @@
-document.addEventListener('DOMContentLoaded', function() {
-    const authBtn = document.getElementById('github-auth-btn');
-    const logoutBtn = document.getElementById('logout-btn');
-    const reposSection = document.getElementById('repos-section');
-    const reposList = document.getElementById('repos-list');
-    const modal = document.getElementById('deployment-modal');
-    const closeBtn = document.querySelector('.close');
-    const logsContainer = document.getElementById('deployment-logs');
+// Frontend JavaScript for authentication and UI interactions
+const socket = io();
 
-    // Check authentication status
-    checkAuthStatus();
+// DOM Elements
+const authSection = document.getElementById('auth-section');
+const authForms = document.getElementById('auth-forms');
+const projectsSection = document.getElementById('projects-section');
+const chatSection = document.getElementById('chat-section');
+const aiSection = document.getElementById('ai-section');
 
-    // GitHub OAuth
-    authBtn.addEventListener('click', () => {
-        window.location.href = '/auth/github';
+// Check if user is logged in on page load
+document.addEventListener('DOMContentLoaded', checkAuthStatus);
+
+// Navigation
+document.querySelectorAll('.nav-link').forEach(link => {
+    link.addEventListener('click', (e) => {
+        e.preventDefault();
+        const section = e.target.getAttribute('data-section');
+        showSection(section);
     });
-
-    // Logout
-    logoutBtn.addEventListener('click', async () => {
-        try {
-            const response = await fetch('/api/logout', {
-                method: 'POST'
-            });
-            
-            if (response.ok) {
-                checkAuthStatus();
-            }
-        } catch (error) {
-            console.error('Logout error:', error);
-        }
-    });
-
-    // Close modal
-    closeBtn.addEventListener('click', () => {
-        modal.style.display = 'none';
-    });
-
-    window.addEventListener('click', (event) => {
-        if (event.target === modal) {
-            modal.style.display = 'none';
-        }
-    });
-
-    // Check authentication status
-    async function checkAuthStatus() {
-        try {
-            const response = await fetch('/api/user');
-            const data = await response.json();
-            
-            if (data.authenticated) {
-                authBtn.style.display = 'none';
-                logoutBtn.style.display = 'inline-block';
-                reposSection.style.display = 'block';
-                loadRepositories();
-            } else {
-                authBtn.style.display = 'inline-block';
-                logoutBtn.style.display = 'none';
-                reposSection.style.display = 'none';
-            }
-        } catch (error) {
-            console.error('Auth check error:', error);
-        }
-    }
-
-    // Load user repositories
-    async function loadRepositories() {
-        try {
-            const response = await fetch('/api/repos');
-            const repos = await response.json();
-            
-            displayRepositories(repos);
-        } catch (error) {
-            console.error('Error loading repositories:', error);
-        }
-    }
-
-    // Display repositories
-    function displayRepositories(repos) {
-        reposList.innerHTML = '';
-        
-        repos.forEach(repo => {
-            const repoCard = document.createElement('div');
-            repoCard.className = 'repo-card';
-            
-            repoCard.innerHTML = `
-                <div class="repo-name">${repo.name}</div>
-                <div class="repo-description">${repo.description || 'No description'}</div>
-                <div class="repo-meta">
-                    <span>⭐ ${repo.stargazers_count}</span>
-                    <span>${repo.language || 'Unknown'}</span>
-                    <span>Updated: ${new Date(repo.updated_at).toLocaleDateString()}</span>
-                </div>
-                <div class="repo-actions">
-                    <button class="btn btn-success deploy-btn" data-owner="${repo.owner.login}" data-repo="${repo.name}">
-                        Deploy
-                    </button>
-                    <button class="btn btn-primary logs-btn" data-owner="${repo.owner.login}" data-repo="${repo.name}">
-                        View Logs
-                    </button>
-                </div>
-                <div id="status-${repo.owner.login}-${repo.name}" class="status-container"></div>
-            `;
-            
-            reposList.appendChild(repoCard);
-            checkDeploymentStatus(repo.owner.login, repo.name);
-        });
-
-        // Add event listeners to buttons
-        document.querySelectorAll('.deploy-btn').forEach(btn => {
-            btn.addEventListener('click', (e) => {
-                const owner = e.target.dataset.owner;
-                const repo = e.target.dataset.repo;
-                deployRepository(owner, repo);
-            });
-        });
-
-        document.querySelectorAll('.logs-btn').forEach(btn => {
-            btn.addEventListener('click', (e) => {
-                const owner = e.target.dataset.owner;
-                const repo = e.target.dataset.repo;
-                viewLogs(owner, repo);
-            });
-        });
-    }
-
-    // Deploy repository
-    async function deployRepository(owner, repo) {
-        try {
-            logsContainer.innerHTML = 'Starting deployment...';
-            modal.style.display = 'block';
-            
-            const response = await fetch(`/api/deploy/${owner}/${repo}`, {
-                method: 'POST'
-            });
-            
-            const data = await response.json();
-            
-            if (data.success) {
-                // Poll logs for updates
-                pollLogs(owner, repo);
-                checkDeploymentStatus(owner, repo);
-            } else {
-                logsContainer.innerHTML = `Deployment failed: ${data.error}`;
-            }
-        } catch (error) {
-            console.error('Deployment error:', error);
-            logsContainer.innerHTML = `Deployment error: ${error.message}`;
-        }
-    }
-
-    // View deployment logs
-    async function viewLogs(owner, repo) {
-        try {
-            logsContainer.innerHTML = 'Loading logs...';
-            modal.style.display = 'block';
-            
-            const response = await fetch(`/api/logs/${owner}/${repo}`);
-            const data = await response.json();
-            
-            logsContainer.innerHTML = data.logs || 'No logs available';
-        } catch (error) {
-            console.error('Error loading logs:', error);
-            logsContainer.innerHTML = `Error loading logs: ${error.message}`;
-        }
-    }
-
-    // Poll logs for updates during deployment
-    async function pollLogs(owner, repo) {
-        const interval = setInterval(async () => {
-            try {
-                const response = await fetch(`/api/logs/${owner}/${repo}`);
-                const data = await response.json();
-                
-                if (data.logs) {
-                    logsContainer.innerHTML = data.logs;
-                    logsContainer.scrollTop = logsContainer.scrollHeight;
-                }
-                
-                // Check if deployment is complete
-                const statusResponse = await fetch(`/api/status/${owner}/${repo}`);
-                const statusData = await statusResponse.json();
-                
-                if (statusData.running) {
-                    clearInterval(interval);
-                    checkDeploymentStatus(owner, repo);
-                }
-            } catch (error) {
-                console.error('Error polling logs:', error);
-            }
-        }, 2000);
-    }
-
-    // Check deployment status
-    async function checkDeploymentStatus(owner, repo) {
-        try {
-            const response = await fetch(`/api/status/${owner}/${repo}`);
-            const data = await response.json();
-            
-            const statusElement = document.getElementById(`status-${owner}-${repo}`);
-            if (statusElement) {
-                let statusClass = 'status-stopped';
-                let statusText = 'Not deployed';
-                
-                if (data.running) {
-                    statusClass = 'status-running';
-                    statusText = 'Running';
-                } else if (data.status === 'created' || data.status === 'restarting') {
-                    statusClass = 'status-building';
-                    statusText = 'Building';
-                }
-                
-                statusElement.innerHTML = `
-                    <span class="status-badge ${statusClass}">${statusText}</span>
-                `;
-            }
-        } catch (error) {
-            console.error('Error checking status:', error);
-        }
-    }
 });
+
+function showSection(sectionName) {
+    // Hide all sections
+    document.querySelectorAll('main > section').forEach(section => {
+        section.classList.add('hidden');
+    });
+
+    // Show the selected section
+    document.getElementById(`${sectionName}-section`).classList.remove('hidden');
+}
+
+// Authentication Functions
+function checkAuthStatus() {
+    // This would typically check a cookie or token
+    // For now, we'll assume user is logged out initially
+    renderAuthForms();
+}
+
+function renderAuthForms() {
+    authForms.innerHTML = `
+        <div class="form-container">
+            <h2>Login to Devs Place</h2>
+            <form onsubmit="handleLogin(event)">
+                <div class="form-group">
+                    <label for="login-email">Email:</label>
+                    <input type="email" id="login-email" required>
+                </div>
+                <div class="form-group">
+                    <label for="login-password">Password:</label>
+                    <input type="password" id="login-password" required>
+                </div>
+                <button type="submit" class="btn">Login</button>
+            </form>
+            <p>Don't have an account? <a href="#" onclick="showSignup()">Sign up</a></p>
+        </div>
+    `;
+    authForms.classList.add('active');
+}
+
+function showSignup() {
+    authForms.innerHTML = `
+        <div class="form-container">
+            <h2>Join Devs Place</h2>
+            <form onsubmit="handleSignup(event)">
+                <div class="form-group">
+                    <label for="signup-username">Username:</label>
+                    <input type="text" id="signup-username" required>
+                </div>
+                <div class="form-group">
+                    <label for="signup-email">Email:</label>
+                    <input type="email" id="signup-email" required>
+                </div>
+                <div class="form-group">
+                    <label for="signup-password">Password:</label>
+                    <input type="password" id="signup-password" required>
+                </div>
+                <button type="submit" class="btn">Sign Up</button>
+            </form>
+            <p>Already have an account? <a href="#" onclick="renderAuthForms()">Login</a></p>
+        </div>
+    `;
+}
+
+async function handleSignup(event) {
+    event.preventDefault();
+    const username = document.getElementById('signup-username').value;
+    const email = document.getElementById('signup-email').value;
+    const password = document.getElementById('signup-password').value;
+
+    try {
+        const response = await fetch('/auth/register', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ username, email, password })
+        });
+
+        const data = await response.json();
+        if (response.ok) {
+            onAuthSuccess(data.username);
+        } else {
+            alert(data.message);
+        }
+    } catch (error) {
+        console.error('Signup error:', error);
+        alert('Error signing up');
+    }
+}
+
+async function handleLogin(event) {
+    event.preventDefault();
+    const email = document.getElementById('login-email').value;
+    const password = document.getElementById('login-password').value;
+
+    try {
+        const response = await fetch('/auth/login', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email, password })
+        });
+
+        const data = await response.json();
+        if (response.ok) {
+            onAuthSuccess(data.username);
+        } else {
+            alert(data.message);
+        }
+    } catch (error) {
+        console.error('Login error:', error);
+        alert('Error logging in');
+    }
+}
+
+function onAuthSuccess(username) {
+    authForms.classList.remove('active');
+    authForms.classList.add('hidden');
+    
+    // Update navigation
+    authSection.innerHTML = `<span>Welcome, ${username}!</span> <a href="#" onclick="handleLogout()">Logout</a>`;
+    
+    // Show the project feed by default
+    showSection('projects');
+}
+
+async function handleLogout() {
+    try {
+        await fetch('/auth/logout', { method: 'POST' });
+        location.reload(); // Refresh the page to reset state
+    } catch (error) {
+        console.error('Logout error:', error);
+    }
+}
+
+// Placeholder functions for other features
+function sendMessage() {
+    console.log('Send message functionality to be implemented with Socket.io');
+}
+
+function askAI() {
+    console.log('AI question functionality to be implemented');
+}
