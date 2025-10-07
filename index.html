@@ -45,6 +45,21 @@
         .syntax-html { color: #e34f26; }
         .syntax-css { color: #1572b6; }
         .syntax-py { color: #3776ab; }
+        .typing-indicator {
+            display: inline-block;
+            width: 8px;
+            height: 8px;
+            background: #0ea5e9;
+            border-radius: 50%;
+            margin: 0 2px;
+            animation: typing 1.4s infinite;
+        }
+        .typing-indicator:nth-child(2) { animation-delay: 0.2s; }
+        .typing-indicator:nth-child(3) { animation-delay: 0.4s; }
+        @keyframes typing {
+            0%, 60%, 100% { transform: translateY(0); }
+            30% { transform: translateY(-10px); }
+        }
     </style>
 </head>
 <body class="gradient-bg text-white min-h-screen">
@@ -64,11 +79,16 @@
                     <a href="#apis" class="hover:text-primary transition">APIs</a>
                     <a href="#ai" class="hover:text-primary transition">AI Assistant</a>
                     <a href="#school" class="hover:text-primary transition">Devs School</a>
+                    <a href="#hackathons" class="hover:text-primary transition">Hackathons</a>
                     <a href="#tools" class="hover:text-primary transition">Tools</a>
                 </div>
 
                 <div class="flex items-center space-x-4">
-                    <button id="themeToggle" class="p-2 rounded-lg glassmorphic">
+                    <button id="notificationsBtn" class="relative p-2 rounded-lg glassmorphic hover:neon-glow transition">
+                        <i class="fas fa-bell"></i>
+                        <span id="notificationCount" class="absolute -top-1 -right-1 bg-red-500 text-xs rounded-full w-5 h-5 flex items-center justify-center hidden">0</span>
+                    </button>
+                    <button id="themeToggle" class="p-2 rounded-lg glassmorphic hover:neon-glow transition">
                         <i class="fas fa-moon"></i>
                     </button>
                     <div id="authButtons" class="flex space-x-3">
@@ -78,11 +98,37 @@
                     <div id="userMenu" class="hidden flex items-center space-x-3">
                         <img id="userAvatar" class="w-8 h-8 rounded-full" src="" alt="Avatar">
                         <span id="userName" class="text-sm"></span>
+                        <div class="relative">
+                            <button id="userDropdownBtn" class="p-1 rounded-lg glassmorphic hover:neon-glow transition">
+                                <i class="fas fa-chevron-down text-xs"></i>
+                            </button>
+                            <div id="userDropdown" class="absolute right-0 mt-2 w-48 glassmorphic rounded-lg shadow-lg hidden">
+                                <a href="#profile" class="block px-4 py-2 hover:bg-slate-800 rounded-t-lg">Profile</a>
+                                <a href="#settings" class="block px-4 py-2 hover:bg-slate-800">Settings</a>
+                                <div id="adminLink" class="hidden">
+                                    <a href="#admin" class="block px-4 py-2 hover:bg-slate-800">Admin Dashboard</a>
+                                </div>
+                                <button onclick="logout()" class="block w-full text-left px-4 py-2 hover:bg-slate-800 rounded-b-lg text-red-400">Logout</button>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
         </div>
     </nav>
+
+    <!-- Notifications Panel -->
+    <div id="notificationsPanel" class="fixed right-4 top-20 w-80 glassmorphic rounded-xl p-4 hidden z-40 max-h-96 overflow-y-auto">
+        <div class="flex justify-between items-center mb-4">
+            <h3 class="font-semibold">Notifications</h3>
+            <button id="closeNotifications" class="text-gray-400 hover:text-white">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+        <div id="notificationsList">
+            <!-- Notifications will be loaded here -->
+        </div>
+    </div>
 
     <!-- Main Content -->
     <main class="pt-20 pb-10">
@@ -107,7 +153,7 @@
         <!-- Dashboard -->
         <section id="dashboard" class="container mx-auto px-4 py-12">
             <h2 class="text-3xl font-bold mb-8">Developer Dashboard</h2>
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-6">
                 <!-- Stats Cards -->
                 <div class="glassmorphic rounded-xl p-6">
                     <div class="flex items-center justify-between">
@@ -136,6 +182,35 @@
                         <i class="fas fa-users text-green-500 text-2xl"></i>
                     </div>
                 </div>
+                <div class="glassmorphic rounded-xl p-6">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <p class="text-gray-400">Following</p>
+                            <p class="text-2xl font-bold" id="userFollowing">0</p>
+                        </div>
+                        <i class="fas fa-user-plus text-purple-500 text-2xl"></i>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Quick Actions -->
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mt-8">
+                <button onclick="scrollToSection('projects')" class="glassmorphic p-4 rounded-lg text-center hover:neon-glow transition">
+                    <i class="fas fa-upload text-2xl mb-2 text-primary"></i>
+                    <p>Upload Project</p>
+                </button>
+                <button onclick="scrollToSection('apis')" class="glassmorphic p-4 rounded-lg text-center hover:neon-glow transition">
+                    <i class="fas fa-plug text-2xl mb-2 text-green-500"></i>
+                    <p>Test APIs</p>
+                </button>
+                <button onclick="scrollToSection('school')" class="glassmorphic p-4 rounded-lg text-center hover:neon-glow transition">
+                    <i class="fas fa-graduation-cap text-2xl mb-2 text-yellow-500"></i>
+                    <p>Learn</p>
+                </button>
+                <button onclick="scrollToSection('hackathons')" class="glassmorphic p-4 rounded-lg text-center hover:neon-glow transition">
+                    <i class="fas fa-trophy text-2xl mb-2 text-red-500"></i>
+                    <p>Hackathons</p>
+                </button>
             </div>
         </section>
 
@@ -159,6 +234,9 @@
                         <button class="chat-room w-full text-left p-3 rounded-lg hover:bg-slate-800 transition" data-room="ai">
                             🤖 AI & ML
                         </button>
+                        <button class="chat-room w-full text-left p-3 rounded-lg hover:bg-slate-800 transition" data-room="design">
+                            🎨 Design
+                        </button>
                     </div>
                     
                     <div class="mt-6">
@@ -170,8 +248,8 @@
                 </div>
 
                 <!-- Chat Messages -->
-                <div class="glassmorphic rounded-xl p-4 lg:col-span-3 flex flex-col">
-                    <div class="flex-1 mb-4 h-96 overflow-y-auto" id="chatMessages">
+                <div class="glassmorphic rounded-xl p-4 lg:col-span-3 flex flex-col h-96">
+                    <div class="flex-1 mb-4 overflow-y-auto" id="chatMessages">
                         <div class="text-center text-gray-500 py-8">
                             Select a chat room to start messaging
                         </div>
@@ -202,45 +280,149 @@
             </div>
         </section>
 
+        <!-- API Hub -->
+        <section id="apis" class="container mx-auto px-4 py-12">
+            <h2 class="text-3xl font-bold mb-8">API Hub</h2>
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <!-- API List -->
+                <div class="glassmorphic rounded-xl p-4 lg:col-span-1">
+                    <div class="flex justify-between items-center mb-4">
+                        <h3 class="font-semibold">Available APIs</h3>
+                        <button onclick="showAPIModal()" class="bg-primary px-3 py-1 rounded text-sm hover:neon-glow transition">
+                            <i class="fas fa-plus mr-1"></i>Add API
+                        </button>
+                    </div>
+                    <div id="apiList" class="space-y-3">
+                        <!-- APIs will be loaded here -->
+                    </div>
+                </div>
+
+                <!-- API Testing Playground -->
+                <div class="glassmorphic rounded-xl p-4 lg:col-span-2">
+                    <h3 class="font-semibold mb-4">API Testing Playground</h3>
+                    <div class="space-y-4">
+                        <div class="flex space-x-2">
+                            <select id="apiMethod" class="bg-slate-800 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary">
+                                <option value="GET">GET</option>
+                                <option value="POST">POST</option>
+                                <option value="PUT">PUT</option>
+                                <option value="DELETE">DELETE</option>
+                            </select>
+                            <input type="text" id="apiEndpoint" 
+                                   class="flex-1 bg-slate-800 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-primary"
+                                   placeholder="https://api.example.com/data">
+                            <button id="testAPI" class="bg-primary px-4 py-2 rounded-lg hover:neon-glow transition">
+                                Test
+                            </button>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium mb-2">Request Body (JSON)</label>
+                            <textarea id="apiBody" class="w-full h-32 code-editor rounded-lg p-4 focus:outline-none focus:ring-2 focus:ring-primary"></textarea>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium mb-2">Response</label>
+                            <pre id="apiResponse" class="code-editor rounded-lg p-4 h-48 overflow-auto">// Response will appear here</pre>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
         <!-- AI Coding Assistant -->
         <section id="ai" class="container mx-auto px-4 py-12">
             <h2 class="text-3xl font-bold mb-8">AI Coding Assistant</h2>
             <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 <div class="glassmorphic rounded-xl p-6">
-                    <div class="flex space-x-2 mb-4">
-                        <button class="ai-mode active px-4 py-2 rounded-lg bg-primary">Code Generation</button>
-                        <button class="ai-mode px-4 py-2 rounded-lg glassmorphic">Debug & Fix</button>
-                        <button class="ai-mode px-4 py-2 rounded-lg glassmorphic">Explain Code</button>
+                    <div class="flex space-x-2 mb-4 overflow-x-auto">
+                        <button class="ai-mode active px-4 py-2 rounded-lg bg-primary" data-mode="code">Code Generation</button>
+                        <button class="ai-mode px-4 py-2 rounded-lg glassmorphic" data-mode="debug">Debug & Fix</button>
+                        <button class="ai-mode px-4 py-2 rounded-lg glassmorphic" data-mode="explain">Explain Code</button>
+                        <button class="ai-mode px-4 py-2 rounded-lg glassmorphic" data-mode="learn">Learn Concept</button>
                     </div>
                     
                     <textarea id="aiPrompt" class="w-full h-32 code-editor rounded-lg p-4 mb-4 focus:outline-none focus:ring-2 focus:ring-primary"
                               placeholder="Describe what you want to code..."></textarea>
                     
-                    <button id="generateCode" class="w-full bg-primary py-3 rounded-lg font-semibold hover:neon-glow transition">
-                        <i class="fas fa-robot mr-2"></i>Generate Code
-                    </button>
+                    <div class="flex space-x-2">
+                        <button id="generateCode" class="flex-1 bg-primary py-3 rounded-lg font-semibold hover:neon-glow transition">
+                            <i class="fas fa-robot mr-2"></i>Generate Code
+                        </button>
+                        <button id="voiceChatBtn" class="px-4 py-3 glassmorphic rounded-lg hover:neon-glow transition">
+                            <i class="fas fa-microphone"></i>
+                        </button>
+                    </div>
+
+                    <!-- Voice Chat Interface -->
+                    <div id="voiceChat" class="mt-4 p-4 glassmorphic rounded-lg hidden">
+                        <div class="flex items-center space-x-2 mb-2">
+                            <div id="voiceStatus" class="text-sm">Click to start voice chat</div>
+                            <div id="voiceTyping" class="hidden">
+                                <div class="typing-indicator"></div>
+                                <div class="typing-indicator"></div>
+                                <div class="typing-indicator"></div>
+                            </div>
+                        </div>
+                        <div id="voiceResponse" class="text-sm text-gray-300"></div>
+                        <button id="startVoice" class="w-full bg-green-500 py-2 rounded-lg mt-2 hover:neon-glow transition">
+                            <i class="fas fa-microphone mr-2"></i>Start Voice Chat
+                        </button>
+                    </div>
                 </div>
                 
                 <div class="glassmorphic rounded-xl p-6">
                     <div class="flex justify-between items-center mb-4">
                         <h3 class="font-semibold">AI Response</h3>
-                        <button id="copyCode" class="px-3 py-1 glassmorphic rounded text-sm">
+                        <button id="copyCode" class="px-3 py-1 glassmorphic rounded text-sm hover:neon-glow transition">
                             <i class="fas fa-copy mr-1"></i>Copy
                         </button>
                     </div>
-                    <pre id="aiOutput" class="code-editor rounded-lg p-4 h-64 overflow-auto">
-// Your generated code will appear here
-                    </pre>
+                    <pre id="aiOutput" class="code-editor rounded-lg p-4 h-96 overflow-auto">// Your generated code will appear here</pre>
                 </div>
             </div>
         </section>
 
-        <!-- Add more sections for APIs, Devs School, Tools, etc. -->
+        <!-- Devs School -->
+        <section id="school" class="container mx-auto px-4 py-12">
+            <h2 class="text-3xl font-bold mb-8">Devs School</h2>
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6" id="lessonsGrid">
+                <!-- Lessons will be loaded here -->
+            </div>
+        </section>
+
+        <!-- Hackathons -->
+        <section id="hackathons" class="container mx-auto px-4 py-12">
+            <h2 class="text-3xl font-bold mb-8">Hackathons & Challenges</h2>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6" id="hackathonsGrid">
+                <!-- Hackathons will be loaded here -->
+            </div>
+        </section>
+
+        <!-- Developer Tools -->
+        <section id="tools" class="container mx-auto px-4 py-12">
+            <h2 class="text-3xl font-bold mb-8">Developer Tools</h2>
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                <div class="glassmorphic rounded-xl p-6 text-center hover:neon-glow transition cursor-pointer">
+                    <i class="fas fa-code text-4xl mb-4 text-primary"></i>
+                    <h3 class="font-semibold mb-2">JSON Formatter</h3>
+                    <p class="text-gray-400 text-sm">Format and validate JSON data</p>
+                </div>
+                <div class="glassmorphic rounded-xl p-6 text-center hover:neon-glow transition cursor-pointer">
+                    <i class="fas fa-lock text-4xl mb-4 text-green-500"></i>
+                    <h3 class="font-semibold mb-2">Base64 Converter</h3>
+                    <p class="text-gray-400 text-sm">Encode/decode Base64 strings</p>
+                </div>
+                <div class="glassmorphic rounded-xl p-6 text-center hover:neon-glow transition cursor-pointer">
+                    <i class="fas fa-search text-4xl mb-4 text-yellow-500"></i>
+                    <h3 class="font-semibold mb-2">Regex Tester</h3>
+                    <p class="text-gray-400 text-sm">Test regular expressions</p>
+                </div>
+            </div>
+        </section>
 
     </main>
 
     <!-- Auth Modal -->
-    <div id="authModal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50">
+    <div id="authModal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50 p-4">
         <div class="glassmorphic rounded-xl p-8 max-w-md w-full mx-4">
             <div class="flex justify-between items-center mb-6">
                 <h3 class="text-xl font-bold" id="authModalTitle">Login to DEVS ARENA</h3>
@@ -252,16 +434,18 @@
             <form id="authForm">
                 <div id="registerFields" class="space-y-4 mb-4 hidden">
                     <input type="text" name="name" placeholder="Full Name" 
-                           class="w-full bg-slate-800 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-primary">
-                    <select name="role" class="w-full bg-slate-800 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-primary">
+                           class="w-full bg-slate-800 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-primary" required>
+                    <select name="role" class="w-full bg-slate-800 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-primary" required>
                         <option value="">Select Role</option>
                         <option value="frontend">Frontend Developer</option>
                         <option value="backend">Backend Developer</option>
                         <option value="fullstack">Full-stack Developer</option>
                         <option value="designer">Designer</option>
                         <option value="student">Student</option>
+                        <option value="mentor">Mentor</option>
+                        <option value="other">Other</option>
                     </select>
-                    <select name="level" class="w-full bg-slate-800 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-primary">
+                    <select name="level" class="w-full bg-slate-800 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-primary" required>
                         <option value="">Select Level</option>
                         <option value="beginner">Beginner</option>
                         <option value="intermediate">Intermediate</option>
@@ -270,9 +454,9 @@
                 </div>
                 
                 <input type="email" name="email" placeholder="Email" 
-                       class="w-full bg-slate-800 rounded-lg px-4 py-2 mb-4 focus:outline-none focus:ring-2 focus:ring-primary">
+                       class="w-full bg-slate-800 rounded-lg px-4 py-2 mb-4 focus:outline-none focus:ring-2 focus:ring-primary" required>
                 <input type="password" name="password" placeholder="Password" 
-                       class="w-full bg-slate-800 rounded-lg px-4 py-2 mb-6 focus:outline-none focus:ring-2 focus:ring-primary">
+                       class="w-full bg-slate-800 rounded-lg px-4 py-2 mb-6 focus:outline-none focus:ring-2 focus:ring-primary" required minlength="6">
                 
                 <button type="submit" class="w-full bg-primary py-3 rounded-lg font-semibold hover:neon-glow transition mb-4">
                     Continue
@@ -294,17 +478,75 @@
         </div>
     </div>
 
+    <!-- Project Modal -->
+    <div id="projectModal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50 p-4">
+        <div class="glassmorphic rounded-xl p-8 max-w-2xl w-full mx-4">
+            <div class="flex justify-between items-center mb-6">
+                <h3 class="text-xl font-bold">Share New Project</h3>
+                <button onclick="hideProjectModal()" class="text-gray-400 hover:text-white">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <form id="projectForm">
+                <div class="space-y-4">
+                    <input type="text" name="title" placeholder="Project Title" 
+                           class="w-full bg-slate-800 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-primary" required>
+                    <textarea name="description" placeholder="Project Description" 
+                              class="w-full bg-slate-800 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-primary" rows="3"></textarea>
+                    <input type="url" name="githubLink" placeholder="GitHub Repository URL" 
+                           class="w-full bg-slate-800 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-primary">
+                    <input type="url" name="liveLink" placeholder="Live Demo URL" 
+                           class="w-full bg-slate-800 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-primary">
+                    <input type="text" name="tags" placeholder="Technologies (comma separated)" 
+                           class="w-full bg-slate-800 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-primary">
+                </div>
+                <button type="submit" class="w-full bg-primary py-3 rounded-lg font-semibold hover:neon-glow transition mt-6">
+                    Share Project
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <!-- API Modal -->
+    <div id="apiModal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50 p-4">
+        <div class="glassmorphic rounded-xl p-8 max-w-2xl w-full mx-4">
+            <div class="flex justify-between items-center mb-6">
+                <h3 class="text-xl font-bold">Add New API</h3>
+                <button onclick="hideAPIModal()" class="text-gray-400 hover:text-white">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <form id="apiForm">
+                <div class="space-y-4">
+                    <input type="text" name="name" placeholder="API Name" 
+                           class="w-full bg-slate-800 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-primary" required>
+                    <input type="url" name="endpoint" placeholder="API Endpoint URL" 
+                           class="w-full bg-slate-800 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-primary" required>
+                    <textarea name="description" placeholder="API Description" 
+                              class="w-full bg-slate-800 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-primary" rows="3"></textarea>
+                    <input type="text" name="category" placeholder="Category (e.g., Weather, Payment, Social)" 
+                           class="w-full bg-slate-800 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-primary">
+                </div>
+                <button type="submit" class="w-full bg-primary py-3 rounded-lg font-semibold hover:neon-glow transition mt-6">
+                    Submit API
+                </button>
+            </form>
+        </div>
+    </div>
+
     <script>
         // Global variables
         let socket = null;
         let currentUser = null;
         let currentChatRoom = null;
+        let recognition = null;
 
         // DOM Content Loaded
         document.addEventListener('DOMContentLoaded', function() {
             initializeApp();
             setupEventListeners();
             checkAuthStatus();
+            loadInitialData();
         });
 
         function initializeApp() {
@@ -334,6 +576,24 @@
             socket.on('user_left', (data) => {
                 displaySystemMessage(`${data.username} left the chat`);
             });
+
+            // Initialize voice recognition
+            if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
+                const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+                recognition = new SpeechRecognition();
+                recognition.continuous = false;
+                recognition.interimResults = false;
+                recognition.lang = 'en-US';
+
+                recognition.onresult = function(event) {
+                    const transcript = event.results[0][0].transcript;
+                    document.getElementById('aiPrompt').value = transcript;
+                };
+
+                recognition.onerror = function(event) {
+                    console.error('Speech recognition error:', event.error);
+                };
+            }
         }
 
         function setupEventListeners() {
@@ -353,13 +613,37 @@
             // AI Assistant
             document.getElementById('generateCode').addEventListener('click', generateCodeWithAI);
             document.getElementById('copyCode').addEventListener('click', copyAICode);
+            document.querySelectorAll('.ai-mode').forEach(btn => {
+                btn.addEventListener('click', function() {
+                    document.querySelectorAll('.ai-mode').forEach(b => b.classList.remove('active', 'bg-primary'));
+                    this.classList.add('active', 'bg-primary');
+                });
+            });
+
+            // Voice Chat
+            document.getElementById('voiceChatBtn').addEventListener('click', toggleVoiceChat);
+            document.getElementById('startVoice').addEventListener('click', startVoiceRecognition);
 
             // Auth modal switching
             document.getElementById('authSwitch').addEventListener('click', toggleAuthMode);
             document.getElementById('authForm').addEventListener('submit', handleAuthSubmit);
 
+            // Project and API forms
+            document.getElementById('projectForm').addEventListener('submit', handleProjectSubmit);
+            document.getElementById('apiForm').addEventListener('submit', handleAPISubmit);
+
+            // API Testing
+            document.getElementById('testAPI').addEventListener('click', testAPIEndpoint);
+
             // Theme toggle
             document.getElementById('themeToggle').addEventListener('click', toggleTheme);
+
+            // Notifications
+            document.getElementById('notificationsBtn').addEventListener('click', toggleNotifications);
+            document.getElementById('closeNotifications').addEventListener('click', toggleNotifications);
+
+            // User dropdown
+            document.getElementById('userDropdownBtn').addEventListener('click', toggleUserDropdown);
         }
 
         // Authentication Functions
@@ -415,12 +699,13 @@
                     updateUIAfterAuth();
                     hideAuthModal();
                     loadUserData();
+                    loadNotifications();
                 } else {
                     alert(result.message || 'Authentication failed');
                 }
             } catch (error) {
                 console.error('Auth error:', error);
-                alert('Authentication failed');
+                alert('Authentication failed. Please try again.');
             }
         }
 
@@ -435,13 +720,17 @@
                 fetch('/api/auth/me', {
                     headers: { 'Authorization': `Bearer ${token}` }
                 })
-                .then(response => response.json())
-                .then(user => {
-                    if (user) {
-                        currentUser = user;
-                        updateUIAfterAuth();
-                        loadUserData();
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error('Token invalid');
                     }
+                    return response.json();
+                })
+                .then(user => {
+                    currentUser = user;
+                    updateUIAfterAuth();
+                    loadUserData();
+                    loadNotifications();
                 })
                 .catch(() => {
                     localStorage.removeItem('token');
@@ -453,11 +742,34 @@
             document.getElementById('authButtons').classList.add('hidden');
             document.getElementById('userMenu').classList.remove('hidden');
             document.getElementById('userName').textContent = currentUser.name;
-            document.getElementById('userAvatar').src = currentUser.avatar || '/default-avatar.png';
+            document.getElementById('userAvatar').src = currentUser.avatar || 'https://via.placeholder.com/32';
+            
+            if (currentUser.isAdmin) {
+                document.getElementById('adminLink').classList.remove('hidden');
+            }
             
             // Enable chat features
             document.getElementById('messageInput').disabled = false;
             document.getElementById('sendMessage').disabled = false;
+
+            // Update online status
+            if (socket) {
+                socket.emit('user_online', currentUser);
+            }
+        }
+
+        function logout() {
+            localStorage.removeItem('token');
+            currentUser = null;
+            document.getElementById('authButtons').classList.remove('hidden');
+            document.getElementById('userMenu').classList.add('hidden');
+            document.getElementById('messageInput').disabled = true;
+            document.getElementById('sendMessage').disabled = true;
+            
+            if (socket) {
+                socket.disconnect();
+                socket.connect();
+            }
         }
 
         // Chat Functions
@@ -501,7 +813,7 @@
             messageDiv.className = 'mb-3';
             messageDiv.innerHTML = `
                 <div class="flex items-start space-x-2">
-                    <img src="${data.user.avatar || '/default-avatar.png'}" 
+                    <img src="${data.user.avatar || 'https://via.placeholder.com/32'}" 
                          class="w-8 h-8 rounded-full mt-1">
                     <div class="flex-1">
                         <div class="flex items-center space-x-2">
@@ -530,7 +842,7 @@
             usersDiv.innerHTML = users.map(user => `
                 <div class="flex items-center space-x-2 p-2 rounded-lg hover:bg-slate-800">
                     <div class="w-2 h-2 bg-green-500 rounded-full"></div>
-                    <img src="${user.avatar || '/default-avatar.png'}" class="w-6 h-6 rounded-full">
+                    <img src="${user.avatar || 'https://via.placeholder.com/24'}" class="w-6 h-6 rounded-full">
                     <span class="text-sm">${user.name}</span>
                 </div>
             `).join('');
@@ -559,7 +871,7 @@
                 document.getElementById('aiOutput').textContent = result.code || 'Error generating code';
             } catch (error) {
                 console.error('AI error:', error);
-                document.getElementById('aiOutput').textContent = 'Error generating code';
+                document.getElementById('aiOutput').textContent = 'Error generating code. Please try again.';
             } finally {
                 generateBtn.innerHTML = '<i class="fas fa-robot mr-2"></i>Generate Code';
                 generateBtn.disabled = false;
@@ -577,16 +889,225 @@
             });
         }
 
-        // Utility Functions
-        function toggleTheme() {
-            document.documentElement.classList.toggle('dark');
-            const icon = document.querySelector('#themeToggle i');
-            icon.classList.toggle('fa-moon');
-            icon.classList.toggle('fa-sun');
+        // Voice Chat Functions
+        function toggleVoiceChat() {
+            const voiceChat = document.getElementById('voiceChat');
+            voiceChat.classList.toggle('hidden');
         }
 
-        function scrollToSection(sectionId) {
-            document.getElementById(sectionId).scrollIntoView({ behavior: 'smooth' });
+        function startVoiceRecognition() {
+            if (!recognition) {
+                alert('Speech recognition not supported in this browser');
+                return;
+            }
+
+            const startBtn = document.getElementById('startVoice');
+            const voiceStatus = document.getElementById('voiceStatus');
+
+            startBtn.innerHTML = '<i class="fas fa-stop mr-2"></i>Listening...';
+            voiceStatus.textContent = 'Listening... Speak now';
+            recognition.start();
+
+            recognition.onend = function() {
+                startBtn.innerHTML = '<i class="fas fa-microphone mr-2"></i>Start Voice Chat';
+                voiceStatus.textContent = 'Click to start voice chat';
+                
+                // Process the voice input
+                const prompt = document.getElementById('aiPrompt').value;
+                if (prompt) {
+                    processVoiceChat(prompt);
+                }
+            };
+        }
+
+        async function processVoiceChat(message) {
+            const voiceTyping = document.getElementById('voiceTyping');
+            const voiceResponse = document.getElementById('voiceResponse');
+            
+            voiceTyping.classList.remove('hidden');
+            voiceResponse.textContent = '';
+
+            try {
+                const response = await fetch('/api/ai/voice-chat', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${localStorage.getItem('token')}`
+                    },
+                    body: JSON.stringify({ message })
+                });
+
+                const result = await response.json();
+                voiceTyping.classList.add('hidden');
+                voiceResponse.textContent = result.response || 'No response received';
+                
+                // Speak the response
+                if ('speechSynthesis' in window) {
+                    const speech = new SpeechSynthesisUtterance(result.response);
+                    speech.rate = 0.8;
+                    window.speechSynthesis.speak(speech);
+                }
+            } catch (error) {
+                console.error('Voice chat error:', error);
+                voiceTyping.classList.add('hidden');
+                voiceResponse.textContent = 'Error processing voice chat';
+            }
+        }
+
+        // Project Functions
+        function showProjectModal() {
+            if (!currentUser) {
+                showAuthModal('login');
+                return;
+            }
+            document.getElementById('projectModal').classList.remove('hidden');
+        }
+
+        function hideProjectModal() {
+            document.getElementById('projectModal').classList.add('hidden');
+        }
+
+        async function handleProjectSubmit(e) {
+            e.preventDefault();
+            const formData = new FormData(e.target);
+            const data = Object.fromEntries(formData);
+
+            try {
+                const response = await fetch('/api/projects', {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${localStorage.getItem('token')}`,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(data)
+                });
+
+                if (response.ok) {
+                    hideProjectModal();
+                    loadProjects();
+                    loadUserData();
+                } else {
+                    alert('Error creating project');
+                }
+            } catch (error) {
+                console.error('Project creation error:', error);
+                alert('Error creating project');
+            }
+        }
+
+        // API Functions
+        function showAPIModal() {
+            if (!currentUser) {
+                showAuthModal('login');
+                return;
+            }
+            document.getElementById('apiModal').classList.remove('hidden');
+        }
+
+        function hideAPIModal() {
+            document.getElementById('apiModal').classList.add('hidden');
+        }
+
+        async function handleAPISubmit(e) {
+            e.preventDefault();
+            const formData = new FormData(e.target);
+            const data = Object.fromEntries(formData);
+
+            try {
+                const response = await fetch('/api/apis', {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${localStorage.getItem('token')}`,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(data)
+                });
+
+                if (response.ok) {
+                    hideAPIModal();
+                    loadAPIs();
+                } else {
+                    alert('Error submitting API');
+                }
+            } catch (error) {
+                console.error('API submission error:', error);
+                alert('Error submitting API');
+            }
+        }
+
+        async function testAPIEndpoint() {
+            const endpoint = document.getElementById('apiEndpoint').value;
+            const method = document.getElementById('apiMethod').value;
+            const body = document.getElementById('apiBody').value;
+
+            if (!endpoint) {
+                alert('Please enter an API endpoint');
+                return;
+            }
+
+            try {
+                const response = await fetch('/api/apis/test', {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${localStorage.getItem('token')}`,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        endpoint,
+                        method,
+                        body: body ? JSON.parse(body) : undefined
+                    })
+                });
+
+                const result = await response.json();
+                document.getElementById('apiResponse').textContent = JSON.stringify(result, null, 2);
+            } catch (error) {
+                console.error('API test error:', error);
+                document.getElementById('apiResponse').textContent = 'Error testing API endpoint';
+            }
+        }
+
+        // Notification Functions
+        function toggleNotifications() {
+            const panel = document.getElementById('notificationsPanel');
+            panel.classList.toggle('hidden');
+        }
+
+        async function loadNotifications() {
+            try {
+                const response = await fetch('/api/notifications', {
+                    headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+                });
+                const notifications = await response.json();
+                
+                const list = document.getElementById('notificationsList');
+                const count = document.getElementById('notificationCount');
+                
+                if (notifications.length > 0) {
+                    count.textContent = notifications.length;
+                    count.classList.remove('hidden');
+                    
+                    list.innerHTML = notifications.map(notif => `
+                        <div class="p-3 border-b border-slate-700 ${!notif.isRead ? 'bg-slate-800' : ''}">
+                            <p class="text-sm">${notif.message}</p>
+                            <span class="text-xs text-gray-400">${new Date(notif.createdAt).toLocaleDateString()}</span>
+                        </div>
+                    `).join('');
+                } else {
+                    count.classList.add('hidden');
+                    list.innerHTML = '<p class="text-gray-400 text-center">No notifications</p>';
+                }
+            } catch (error) {
+                console.error('Error loading notifications:', error);
+            }
+        }
+
+        // Data Loading Functions
+        async function loadInitialData() {
+            await loadProjects();
+            await loadAPIs();
+            await loadLessons();
+            await loadHackathons();
         }
 
         async function loadUserData() {
@@ -600,22 +1121,13 @@
                     document.getElementById('userReputation').textContent = data.reputation || 0;
                     document.getElementById('userProjects').textContent = data.projectsCount || 0;
                     document.getElementById('userFollowers').textContent = data.followersCount || 0;
+                    document.getElementById('userFollowing').textContent = data.followingCount || 0;
                 }
             } catch (error) {
                 console.error('Error loading user data:', error);
             }
         }
 
-        function showProjectModal() {
-            if (!currentUser) {
-                showAuthModal('login');
-                return;
-            }
-            // Implementation for project modal
-            alert('Project creation modal will be implemented with backend');
-        }
-
-        // Load projects on page load
         async function loadProjects() {
             try {
                 const response = await fetch('/api/projects');
@@ -623,11 +1135,12 @@
                 const grid = document.getElementById('projectsGrid');
                 
                 grid.innerHTML = projects.map(project => `
-                    <div class="glassmorphic rounded-xl p-4">
-                        <img src="${project.screenshot || '/default-project.png'}" 
-                             class="w-full h-48 object-cover rounded-lg mb-4">
+                    <div class="glassmorphic rounded-xl p-4 hover:neon-glow transition">
+                        <div class="w-full h-48 bg-slate-800 rounded-lg mb-4 flex items-center justify-center">
+                            <i class="fas fa-code text-4xl text-gray-600"></i>
+                        </div>
                         <h3 class="font-semibold text-lg mb-2">${project.title}</h3>
-                        <p class="text-gray-400 text-sm mb-4">${project.description}</p>
+                        <p class="text-gray-400 text-sm mb-4">${project.description || 'No description'}</p>
                         <div class="flex justify-between items-center">
                             <div class="flex space-x-2">
                                 <button class="text-gray-400 hover:text-red-500">
@@ -637,7 +1150,7 @@
                                     <i class="fas fa-comment"></i> ${project.comments || 0}
                                 </button>
                             </div>
-                            <span class="text-xs glassmorphic px-2 py-1 rounded">${project.language}</span>
+                            <span class="text-xs glassmorphic px-2 py-1 rounded">${project.tags?.[0] || 'Project'}</span>
                         </div>
                     </div>
                 `).join('');
@@ -646,8 +1159,120 @@
             }
         }
 
-        // Initialize projects load
-        loadProjects();
+        async function loadAPIs() {
+            try {
+                const response = await fetch('/api/apis');
+                const apis = await response.json();
+                const list = document.getElementById('apiList');
+                
+                list.innerHTML = apis.map(api => `
+                    <div class="glassmorphic p-3 rounded-lg hover:neon-glow transition cursor-pointer" onclick="document.getElementById('apiEndpoint').value = '${api.endpoint}'">
+                        <div class="flex justify-between items-start mb-2">
+                            <h4 class="font-semibold">${api.name}</h4>
+                            <span class="text-xs bg-green-500 px-2 py-1 rounded">${api.category}</span>
+                        </div>
+                        <p class="text-gray-400 text-sm mb-2">${api.description}</p>
+                        <code class="text-xs bg-slate-800 px-2 py-1 rounded">${api.endpoint}</code>
+                    </div>
+                `).join('');
+            } catch (error) {
+                console.error('Error loading APIs:', error);
+            }
+        }
+
+        async function loadLessons() {
+            try {
+                const response = await fetch('/api/lessons');
+                const lessons = await response.json();
+                const grid = document.getElementById('lessonsGrid');
+                
+                grid.innerHTML = lessons.map(lesson => `
+                    <div class="glassmorphic rounded-xl p-6 hover:neon-glow transition">
+                        <div class="flex justify-between items-start mb-4">
+                            <h3 class="font-semibold text-lg">${lesson.title}</h3>
+                            <span class="text-xs glassmorphic px-2 py-1 rounded">${lesson.level}</span>
+                        </div>
+                        <p class="text-gray-400 text-sm mb-4">${lesson.content.substring(0, 100)}...</p>
+                        <div class="flex justify-between items-center">
+                            <span class="text-xs text-gray-400">${lesson.duration} min</span>
+                            <button class="bg-primary px-3 py-1 rounded text-sm hover:neon-glow transition">
+                                Start
+                            </button>
+                        </div>
+                    </div>
+                `).join('');
+            } catch (error) {
+                console.error('Error loading lessons:', error);
+            }
+        }
+
+        async function loadHackathons() {
+            try {
+                const response = await fetch('/api/hackathons');
+                const hackathons = await response.json();
+                const grid = document.getElementById('hackathonsGrid');
+                
+                grid.innerHTML = hackathons.map(hackathon => `
+                    <div class="glassmorphic rounded-xl p-6 hover:neon-glow transition">
+                        <h3 class="font-semibold text-lg mb-2">${hackathon.title}</h3>
+                        <p class="text-gray-400 text-sm mb-4">${hackathon.description}</p>
+                        <div class="flex justify-between items-center mb-4">
+                            <span class="text-xs text-gray-400">
+                                ${new Date(hackathon.startDate).toLocaleDateString()} - ${new Date(hackathon.endDate).toLocaleDateString()}
+                            </span>
+                            <span class="text-xs glassmorphic px-2 py-1 rounded">${hackathon.participants.length} participants</span>
+                        </div>
+                        <button class="w-full bg-primary py-2 rounded-lg hover:neon-glow transition">
+                            Join Hackathon
+                        </button>
+                    </div>
+                `).join('');
+            } catch (error) {
+                console.error('Error loading hackathons:', error);
+            }
+        }
+
+        // Utility Functions
+        function toggleTheme() {
+            document.documentElement.classList.toggle('dark');
+            const icon = document.querySelector('#themeToggle i');
+            icon.classList.toggle('fa-moon');
+            icon.classList.toggle('fa-sun');
+        }
+
+        function toggleUserDropdown() {
+            document.getElementById('userDropdown').classList.toggle('hidden');
+        }
+
+        function scrollToSection(sectionId) {
+            document.getElementById(sectionId).scrollIntoView({ behavior: 'smooth' });
+        }
+
+        // Close dropdowns when clicking outside
+        document.addEventListener('click', function(event) {
+            if (!event.target.closest('#userDropdown') && !event.target.closest('#userDropdownBtn')) {
+                document.getElementById('userDropdown').classList.add('hidden');
+            }
+            if (!event.target.closest('#notificationsPanel') && !event.target.closest('#notificationsBtn')) {
+                document.getElementById('notificationsPanel').classList.add('hidden');
+            }
+        });
+
+        // Check for OAuth callback
+        const urlParams = new URLSearchParams(window.location.search);
+        const token = urlParams.get('token');
+        const user = urlParams.get('user');
+
+        if (token && user) {
+            localStorage.setItem('token', token);
+            currentUser = JSON.parse(decodeURIComponent(user));
+            updateUIAfterAuth();
+            loadUserData();
+            loadNotifications();
+            
+            // Clean URL
+            window.history.replaceState({}, document.title, window.location.pathname);
+        }
     </script>
 </body>
-</html>
+    </html>
