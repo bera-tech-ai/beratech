@@ -24,18 +24,27 @@ const io = socketIo(server, {
 // Middleware
 app.use(cors());
 app.use(express.json());
-app.use(express.static('.')); // Serve current directory
+app.use(express.static('.'));
 app.use(passport.initialize());
 
-// MongoDB Connection
+// MongoDB Connection with better error handling
 mongoose.connect(process.env.MONGODB_URI, {
   useNewUrlParser: true,
   useUnifiedTopology: true,
 })
-.then(() => console.log('✅ MongoDB Connected Successfully'))
-.catch(err => console.error('❌ MongoDB Connection Error:', err));
+.then(() => {
+  console.log('✅ MongoDB Connected Successfully');
+  // Drop the problematic username index if it exists
+  return mongoose.connection.collection('users').dropIndex('username_1').catch(() => {
+    console.log('ℹ️ No username index to drop or already dropped');
+  });
+})
+.catch(err => {
+  console.error('❌ MongoDB Connection Error:', err);
+  process.exit(1);
+});
 
-// MongoDB Schemas
+// MongoDB Schemas - Fixed to handle the username index issue
 const userSchema = new mongoose.Schema({
   name: { type: String, required: true },
   email: { type: String, required: true, unique: true },
@@ -54,7 +63,13 @@ const userSchema = new mongoose.Schema({
   isAdmin: { type: Boolean, default: false },
   githubId: String,
   createdAt: { type: Date, default: Date.now }
+}, {
+  // Prevent Mongoose from creating indexes automatically
+  autoIndex: false
 });
+
+// Remove any existing problematic indexes and create only what we need
+userSchema.index({ email: 1 }, { unique: true });
 
 const projectSchema = new mongoose.Schema({
   title: { type: String, required: true },
@@ -152,42 +167,45 @@ const storage = multer.diskStorage({
 const upload = multer({ storage: storage });
 
 // OpenAI initialization
-const openai = new OpenAI({
+const openai = process.env.OPENAI_API_KEY ? new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
-});
+}) : null;
 
 // Passport GitHub OAuth
-passport.use(new GitHubStrategy({
-  clientID: process.env.GITHUB_CLIENT_ID,
-  clientSecret: process.env.GITHUB_CLIENT_SECRET,
-  callbackURL: process.env.GITHUB_CALLBACK_URL
-}, async (accessToken, refreshToken, profile, done) => {
-  try {
-    let user = await User.findOne({ githubId: profile.id });
-    
-    if (!user) {
-      user = await User.findOne({ email: profile.emails[0].value });
+if (process.env.GITHUB_CLIENT_ID && process.env.GITHUB_CLIENT_SECRET) {
+  passport.use(new GitHubStrategy({
+    clientID: process.env.GITHUB_CLIENT_ID,
+    clientSecret: process.env.GITHUB_CLIENT_SECRET,
+    callbackURL: process.env.GITHUB_CALLBACK_URL
+  }, async (accessToken, refreshToken, profile, done) => {
+    try {
+      let user = await User.findOne({ githubId: profile.id });
       
       if (!user) {
-        user = new User({
-          githubId: profile.id,
-          name: profile.displayName,
-          email: profile.emails[0].value,
-          avatar: profile.photos[0].value,
-          isVerified: true
-        });
-        await user.save();
-      } else {
-        user.githubId = profile.id;
-        await user.save();
+        user = await User.findOne({ email: profile.emails?.[0]?.value });
+        
+        if (!user) {
+          user = new User({
+            githubId: profile.id,
+            name: profile.displayName || profile.username,
+            email: profile.emails?.[0]?.value || `${profile.id}@github.com`,
+            avatar: profile.photos?.[0]?.value,
+            isVerified: true
+          });
+          await user.save();
+        } else {
+          user.githubId = profile.id;
+          await user.save();
+        }
       }
+      
+      return done(null, user);
+    } catch (error) {
+      console.error('GitHub OAuth error:', error);
+      return done(error, null);
     }
-    
-    return done(null, user);
-  } catch (error) {
-    return done(error, null);
-  }
-}));
+  }));
+}
 
 // JWT Authentication Middleware
 const authenticateToken = (req, res, next) => {
@@ -222,6 +240,15 @@ app.post('/api/auth/register', async (req, res) => {
     console.log('Registration attempt:', req.body);
     const { name, email, password, role, level } = req.body;
     
+    // Basic validation
+    if (!name || !email || !password) {
+      return res.status(400).json({ message: 'Name, email, and password are required' });
+    }
+
+    if (password.length < 6) {
+      return res.status(400).json({ message: 'Password must be at least 6 characters' });
+    }
+
     // Check if user exists
     const existingUser = await User.findOne({ email });
     if (existingUser) {
@@ -269,6 +296,11 @@ app.post('/api/auth/register', async (req, res) => {
     });
   } catch (error) {
     console.error('Registration error:', error);
+    
+    if (error.code === 11000) {
+      return res.status(400).json({ message: 'Email already exists' });
+    }
+    
     res.status(500).json({ message: 'Server error during registration: ' + error.message });
   }
 });
@@ -276,6 +308,10 @@ app.post('/api/auth/register', async (req, res) => {
 app.post('/api/auth/login', async (req, res) => {
   try {
     const { email, password } = req.body;
+
+    if (!email || !password) {
+      return res.status(400).json({ message: 'Email and password are required' });
+    }
 
     // Find user
     const user = await User.findOne({ email });
@@ -320,10 +356,20 @@ app.post('/api/auth/login', async (req, res) => {
 });
 
 // GitHub OAuth Routes
-app.get('/auth/github', passport.authenticate('github', { scope: ['user:email'] }));
+app.get('/auth/github', (req, res, next) => {
+  if (!process.env.GITHUB_CLIENT_ID) {
+    return res.status(501).json({ message: 'GitHub OAuth not configured' });
+  }
+  passport.authenticate('github', { scope: ['user:email'] })(req, res, next);
+});
 
 app.get('/auth/github/callback', 
-  passport.authenticate('github', { failureRedirect: '/?auth=failed' }),
+  (req, res, next) => {
+    if (!process.env.GITHUB_CLIENT_ID) {
+      return res.redirect('/?auth=not_configured');
+    }
+    passport.authenticate('github', { failureRedirect: '/?auth=failed' })(req, res, next);
+  },
   async (req, res) => {
     try {
       const token = jwt.sign(
@@ -336,8 +382,15 @@ app.get('/auth/github/callback',
         { expiresIn: '24h' }
       );
       
-      res.redirect(`/?token=${token}&user=${encodeURIComponent(JSON.stringify(req.user))}`);
+      res.redirect(`/?token=${token}&user=${encodeURIComponent(JSON.stringify({
+        id: req.user._id,
+        name: req.user.name,
+        email: req.user.email,
+        avatar: req.user.avatar,
+        isAdmin: req.user.isAdmin
+      }))}`);
     } catch (error) {
+      console.error('GitHub callback error:', error);
       res.redirect('/?auth=error');
     }
   }
@@ -442,6 +495,10 @@ app.post('/api/projects', authenticateToken, upload.single('screenshot'), async 
   try {
     const { title, description, githubLink, liveLink, tags } = req.body;
     
+    if (!title) {
+      return res.status(400).json({ message: 'Project title is required' });
+    }
+
     const project = new Project({
       title,
       description,
@@ -473,8 +530,10 @@ app.post('/api/ai/generate-code', authenticateToken, async (req, res) => {
       return res.status(400).json({ message: 'Prompt is required' });
     }
 
-    if (!process.env.OPENAI_API_KEY) {
-      return res.json({ code: '// AI feature disabled - No API key provided\nconsole.log("AI feature currently unavailable");' });
+    if (!openai) {
+      return res.json({ 
+        code: '// AI feature is currently unavailable\n// Please check if OpenAI API key is configured\nconsole.log("Hello from DEVS ARENA!");' 
+      });
     }
 
     const completion = await openai.chat.completions.create({
@@ -505,7 +564,7 @@ app.post('/api/ai/voice-chat', authenticateToken, async (req, res) => {
   try {
     const { message } = req.body;
 
-    if (!process.env.OPENAI_API_KEY) {
+    if (!openai) {
       return res.json({ response: "AI voice chat is currently unavailable. Please try again later." });
     }
 
@@ -550,6 +609,10 @@ app.post('/api/apis', authenticateToken, async (req, res) => {
   try {
     const { name, endpoint, description, category } = req.body;
     
+    if (!name || !endpoint) {
+      return res.status(400).json({ message: 'API name and endpoint are required' });
+    }
+
     const api = new API({
       name,
       endpoint,
@@ -571,6 +634,10 @@ app.post('/api/apis/test', authenticateToken, async (req, res) => {
   try {
     const { endpoint, method, headers, body } = req.body;
     
+    if (!endpoint) {
+      return res.status(400).json({ message: 'Endpoint is required' });
+    }
+
     // Simple fetch to test the endpoint
     const response = await fetch(endpoint, {
       method: method || 'GET',
@@ -710,6 +777,15 @@ app.put('/api/admin/apis/:apiId/approve', authenticateToken, adminAuth, async (r
   }
 });
 
+// Health check route
+app.get('/api/health', (req, res) => {
+  res.json({ 
+    status: 'OK', 
+    timestamp: new Date().toISOString(),
+    database: mongoose.connection.readyState === 1 ? 'Connected' : 'Disconnected'
+  });
+});
+
 // Socket.IO for real-time chat
 const onlineUsers = new Map();
 
@@ -729,16 +805,18 @@ io.on('connection', (socket) => {
 
   socket.on('join_room', (room) => {
     socket.join(room);
+    const user = onlineUsers.get(socket.id);
     socket.to(room).emit('user_joined', {
-      username: onlineUsers.get(socket.id)?.name || 'Anonymous',
+      username: user?.name || 'Anonymous',
       room
     });
   });
 
   socket.on('leave_room', (room) => {
     socket.leave(room);
+    const user = onlineUsers.get(socket.id);
     socket.to(room).emit('user_left', {
-      username: onlineUsers.get(socket.id)?.name || 'Anonymous',
+      username: user?.name || 'Anonymous',
       room
     });
   });
@@ -774,7 +852,7 @@ io.on('connection', (socket) => {
   });
 });
 
-// Create initial admin user
+// Create initial admin user - FIXED
 async function createAdminUser() {
   try {
     const adminExists = await User.findOne({ email: 'admin@devsarena.com' });
@@ -791,9 +869,21 @@ async function createAdminUser() {
       });
       await adminUser.save();
       console.log('✅ Admin user created');
+    } else {
+      console.log('ℹ️ Admin user already exists');
     }
   } catch (error) {
     console.error('Error creating admin user:', error);
+    // If it's a duplicate key error, try to fix it
+    if (error.code === 11000) {
+      try {
+        // Drop the problematic index
+        await mongoose.connection.collection('users').dropIndex('username_1');
+        console.log('✅ Problematic username index dropped');
+      } catch (dropError) {
+        console.log('ℹ️ Could not drop index, might already be dropped');
+      }
+    }
   }
 }
 
@@ -835,6 +925,9 @@ server.listen(PORT, async () => {
   console.log(`🚀 DEVS ARENA server running on port ${PORT}`);
   console.log(`🌐 Environment: ${process.env.NODE_ENV || 'development'}`);
   
-  await createAdminUser();
-  await createSampleData();
+  // Wait a bit for MongoDB to be ready
+  setTimeout(async () => {
+    await createAdminUser();
+    await createSampleData();
+  }, 2000);
 });
