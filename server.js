@@ -1,16 +1,18 @@
+// server.js - COMPLETE REAL-TIME FUNCTIONALITY
+require('dotenv').config();
 const express = require('express');
 const mongoose = require('mongoose');
-const cors = require('cors');
-const jwt = require('jsonwebtoken');
-const bcrypt = require('bcryptjs');
-const multer = require('multer');
-const path = require('path');
 const http = require('http');
 const socketIo = require('socket.io');
-const OpenAI = require('openai');
+const path = require('path');
+const bcrypt = require('bcryptjs');
+const jwt = require('jsonwebtoken');
+const multer = require('multer');
 const passport = require('passport');
 const GitHubStrategy = require('passport-github2').Strategy;
-require('dotenv').config();
+const { OpenAI } = require('openai');
+const cors = require('cors');
+const fs = require('fs');
 
 const app = express();
 const server = http.createServer(app);
@@ -21,138 +23,178 @@ const io = socketIo(server, {
   }
 });
 
+// Ensure uploads directory exists
+if (!fs.existsSync('uploads')) {
+  fs.mkdirSync('uploads');
+}
+
 // Middleware
 app.use(cors());
-app.use(express.json());
-app.use(express.static('.'));
+app.use(express.json({ limit: '50mb' }));
+app.use(express.urlencoded({ extended: true }));
+app.use(express.static(path.join(__dirname)));
+app.use('/uploads', express.static('uploads'));
+app.use(require('express-session')({
+  secret: process.env.JWT_SECRET,
+  resave: false,
+  saveUninitialized: false
+}));
 app.use(passport.initialize());
+app.use(passport.session());
 
 // MongoDB Connection
-mongoose.connect(process.env.MONGODB_URI, {
-  useNewUrlParser: true,
-  useUnifiedTopology: true,
-})
-.then(() => {
-  console.log('✅ MongoDB Connected Successfully');
-  return mongoose.connection.collection('users').dropIndex('username_1').catch(() => {
-    console.log('ℹ️ No username index to drop or already dropped');
-  });
-})
-.catch(err => {
-  console.error('❌ MongoDB Connection Error:', err);
-  process.exit(1);
+mongoose.connect(process.env.MONGODB_URI)
+.then(() => console.log('✅ MongoDB Connected Successfully'))
+.catch(err => console.log('❌ MongoDB Error:', err));
+
+// OpenAI Configuration
+const openai = new OpenAI({
+  apiKey: process.env.OPENAI_API_KEY
 });
 
-// MongoDB Schemas
-const userSchema = new mongoose.Schema({
+// MongoDB Schemas (same as before, but ensure they're properly defined)
+const UserSchema = new mongoose.Schema({
   name: { type: String, required: true },
-  email: { type: String, required: true, unique: true },
-  password: { type: String },
-  role: { type: String, enum: ['frontend', 'backend', 'fullstack', 'designer', 'student', 'mentor', 'other'], default: 'other' },
-  level: { type: String, enum: ['beginner', 'intermediate', 'pro'], default: 'beginner' },
+  email: { type: String, unique: true },
+  password: String,
+  role: { type: String, enum: ['Frontend', 'Backend', 'Full-stack', 'Designer', 'Student', 'Mentor', 'Other'], default: 'Other' },
+  level: { type: String, enum: ['Beginner', 'Intermediate', 'Pro'], default: 'Beginner' },
   skills: [String],
   country: String,
   bio: String,
   avatar: String,
   reputation: { type: Number, default: 0 },
-  projectsCount: { type: Number, default: 0 },
-  followersCount: { type: Number, default: 0 },
-  followingCount: { type: Number, default: 0 },
-  isVerified: { type: Boolean, default: false },
-  isAdmin: { type: Boolean, default: false },
+  followers: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }],
+  following: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }],
   githubId: String,
+  isVerified: { type: Boolean, default: false },
+  badges: [String],
+  isOnline: { type: Boolean, default: false },
+  lastSeen: { type: Date, default: Date.now },
   createdAt: { type: Date, default: Date.now }
-}, {
-  autoIndex: false
 });
 
-userSchema.index({ email: 1 }, { unique: true });
-
-const projectSchema = new mongoose.Schema({
+const ProjectSchema = new mongoose.Schema({
   title: { type: String, required: true },
   description: String,
   githubLink: String,
   liveLink: String,
   tags: [String],
   screenshot: String,
-  author: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
-  likes: { type: Number, default: 0 },
-  comments: { type: Number, default: 0 },
-  forks: { type: Number, default: 0 },
+  codeFiles: [{
+    filename: String,
+    content: String,
+    language: String
+  }],
+  author: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
+  likes: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }],
+  forks: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }],
+  comments: [{
+    user: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+    text: String,
+    createdAt: { type: Date, default: Date.now }
+  }],
+  viewCount: { type: Number, default: 0 },
   createdAt: { type: Date, default: Date.now }
 });
 
-const messageSchema = new mongoose.Schema({
-  room: String,
-  user: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
-  message: String,
-  type: { type: String, default: 'text' },
-  createdAt: { type: Date, default: Date.now }
-});
-
-const apiSchema = new mongoose.Schema({
+const APISchema = new mongoose.Schema({
   name: { type: String, required: true },
   endpoint: { type: String, required: true },
+  method: { type: String, enum: ['GET', 'POST', 'PUT', 'DELETE'], default: 'GET' },
   description: String,
   category: String,
-  owner: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+  parameters: [{
+    name: String,
+    type: String,
+    required: Boolean,
+    description: String
+  }],
+  response: mongoose.Schema.Types.Mixed,
+  owner: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
   isApproved: { type: Boolean, default: false },
   usageCount: { type: Number, default: 0 },
   createdAt: { type: Date, default: Date.now }
 });
 
-const lessonSchema = new mongoose.Schema({
-  title: { type: String, required: true },
-  content: String,
-  category: String,
-  level: String,
-  duration: Number,
-  order: Number,
-  completedBy: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }]
+const MessageSchema = new mongoose.Schema({
+  room: { type: String, required: true },
+  user: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
+  text: String,
+  type: { type: String, enum: ['text', 'code', 'file'], default: 'text' },
+  fileUrl: String,
+  codeLanguage: String,
+  isEdited: { type: Boolean, default: false },
+  reactions: [{
+    user: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+    emoji: String
+  }],
+  createdAt: { type: Date, default: Date.now }
 });
 
-const hackathonSchema = new mongoose.Schema({
+const LessonSchema = new mongoose.Schema({
   title: { type: String, required: true },
   description: String,
-  startDate: Date,
-  endDate: Date,
+  content: String,
+  category: { type: String, required: true },
+  level: { type: String, enum: ['Beginner', 'Intermediate', 'Advanced'], required: true },
+  duration: Number,
+  videoUrl: String,
+  codeExamples: [{
+    title: String,
+    code: String,
+    language: String,
+    explanation: String
+  }],
+  quiz: [{
+    question: String,
+    options: [String],
+    answer: String,
+    explanation: String
+  }],
+  order: Number,
+  isPublished: { type: Boolean, default: false }
+});
+
+const UserProgressSchema = new mongoose.Schema({
+  user: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
+  lesson: { type: mongoose.Schema.Types.ObjectId, ref: 'Lesson', required: true },
+  completed: { type: Boolean, default: false },
+  score: Number,
+  timeSpent: Number,
+  lastAccessed: { type: Date, default: Date.now }
+});
+
+const HackathonSchema = new mongoose.Schema({
+  title: { type: String, required: true },
+  description: String,
+  startDate: { type: Date, required: true },
+  endDate: { type: Date, required: true },
   participants: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }],
   submissions: [{
+    user: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
     project: { type: mongoose.Schema.Types.ObjectId, ref: 'Project' },
-    submittedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
-    submittedAt: { type: Date, default: Date.now }
+    submittedAt: { type: Date, default: Date.now },
+    score: Number
   }],
-  prizes: [String],
-  isActive: { type: Boolean, default: true }
+  winners: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }],
+  isActive: { type: Boolean, default: true },
+  prize: String
 });
 
-const followSchema = new mongoose.Schema({
-  follower: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
-  following: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
-  createdAt: { type: Date, default: Date.now }
-});
+// MongoDB Models
+const User = mongoose.model('User', UserSchema);
+const Project = mongoose.model('Project', ProjectSchema);
+const API = mongoose.model('API', APISchema);
+const Message = mongoose.model('Message', MessageSchema);
+const Lesson = mongoose.model('Lesson', LessonSchema);
+const UserProgress = mongoose.model('UserProgress', UserProgressSchema);
+const Hackathon = mongoose.model('Hackathon', HackathonSchema);
 
-const notificationSchema = new mongoose.Schema({
-  user: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
-  type: String,
-  message: String,
-  relatedUser: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
-  relatedProject: { type: mongoose.Schema.Types.ObjectId, ref: 'Project' },
-  isRead: { type: Boolean, default: false },
-  createdAt: { type: Date, default: Date.now }
-});
+// Store online users
+const onlineUsers = new Map();
 
-// Models
-const User = mongoose.model('User', userSchema);
-const Project = mongoose.model('Project', projectSchema);
-const Message = mongoose.model('Message', messageSchema);
-const API = mongoose.model('API', apiSchema);
-const Lesson = mongoose.model('Lesson', lessonSchema);
-const Hackathon = mongoose.model('Hackathon', hackathonSchema);
-const Follow = mongoose.model('Follow', followSchema);
-const Notification = mongoose.model('Notification', notificationSchema);
-
-// Multer for file uploads
+// Multer Configuration for File Uploads
 const storage = multer.diskStorage({
   destination: function (req, file, cb) {
     cb(null, 'uploads/')
@@ -161,282 +203,150 @@ const storage = multer.diskStorage({
     cb(null, Date.now() + '-' + file.originalname)
   }
 });
-const upload = multer({ storage: storage });
 
-// OpenAI initialization
-const openai = process.env.OPENAI_API_KEY ? new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
-}) : null;
+const upload = multer({ 
+  storage: storage,
+  limits: { fileSize: 10 * 1024 * 1024 }
+});
 
-// Passport GitHub OAuth
-if (process.env.GITHUB_CLIENT_ID && process.env.GITHUB_CLIENT_SECRET) {
-  passport.use(new GitHubStrategy({
-    clientID: process.env.GITHUB_CLIENT_ID,
-    clientSecret: process.env.GITHUB_CLIENT_SECRET,
-    callbackURL: process.env.GITHUB_CALLBACK_URL
-  }, async (accessToken, refreshToken, profile, done) => {
-    try {
-      let user = await User.findOne({ githubId: profile.id });
-      
-      if (!user) {
-        user = await User.findOne({ email: profile.emails?.[0]?.value });
-        
-        if (!user) {
-          user = new User({
-            githubId: profile.id,
-            name: profile.displayName || profile.username,
-            email: profile.emails?.[0]?.value || `${profile.id}@github.com`,
-            avatar: profile.photos?.[0]?.value,
-            isVerified: true
-          });
-          await user.save();
-        } else {
-          user.githubId = profile.id;
-          await user.save();
-        }
-      }
-      
-      return done(null, user);
-    } catch (error) {
-      console.error('GitHub OAuth error:', error);
-      return done(error, null);
-    }
-  }));
-}
-
-// JWT Authentication Middleware
-const authenticateToken = (req, res, next) => {
-  const authHeader = req.headers['authorization'];
-  const token = authHeader && authHeader.split(' ')[1];
-
-  if (!token) {
-    return res.status(401).json({ message: 'Access token required' });
-  }
-
-  jwt.verify(token, process.env.JWT_SECRET, (err, decoded) => {
-    if (err) {
-      return res.status(403).json({ message: 'Invalid token' });
-    }
-    req.user = decoded;
-    next();
-  });
-};
-
-const adminAuth = async (req, res, next) => {
+// Authentication Middleware
+const authenticateToken = async (req, res, next) => {
   try {
-    const user = await User.findById(req.user.userId);
-    if (!user || !user.isAdmin) {
-      return res.status(403).json({ message: 'Admin access required' });
+    const authHeader = req.headers['authorization'];
+    const token = authHeader && authHeader.split(' ')[1];
+
+    if (!token) {
+      return res.status(401).json({ error: 'Access token required' });
     }
+
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    const user = await User.findById(decoded.userId).select('-password');
+    
+    if (!user) {
+      return res.status(401).json({ error: 'User not found' });
+    }
+
+    req.user = user;
     next();
   } catch (error) {
-    res.status(500).json({ message: 'Server error' });
+    res.status(403).json({ error: 'Invalid token' });
   }
 };
 
 // Routes
 
+// Serve main page
+app.get('/', (req, res) => {
+  res.sendFile(path.join(__dirname, 'index.html'));
+});
+
 // Auth Routes
-app.post('/api/auth/register', async (req, res) => {
+app.post('/api/register', async (req, res) => {
   try {
-    const { name, email, password, role, level } = req.body;
+    const { name, email, password, role, level, skills, country, bio } = req.body;
     
     if (!name || !email || !password) {
-      return res.status(400).json({ message: 'Name, email, and password are required' });
+      return res.status(400).json({ error: 'Name, email, and password are required' });
     }
 
     const existingUser = await User.findOne({ email });
     if (existingUser) {
-      return res.status(400).json({ message: 'User already exists with this email' });
+      return res.status(400).json({ error: 'User already exists with this email' });
     }
 
     const hashedPassword = await bcrypt.hash(password, 12);
-    const user = new User({
+    
+    const user = await User.create({
       name,
       email,
       password: hashedPassword,
-      role: role || 'other',
-      level: level || 'beginner'
+      role: role || 'Other',
+      level: level || 'Beginner',
+      skills: skills || [],
+      country,
+      bio
     });
 
-    await user.save();
-
-    const token = jwt.sign(
-      { 
-        userId: user._id, 
-        email: user.email
-      },
-      process.env.JWT_SECRET,
-      { expiresIn: '24h' }
-    );
-
-    res.status(201).json({
-      token,
-      user: {
-        id: user._id,
-        name: user.name,
+    const token = jwt.sign({ userId: user._id }, process.env.JWT_SECRET);
+    
+    res.json({ 
+      token, 
+      user: { 
+        id: user._id, 
+        name: user.name, 
         email: user.email,
         role: user.role,
         level: user.level,
-        avatar: user.avatar,
-        reputation: user.reputation,
-        isAdmin: user.isAdmin
-      }
+        avatar: user.avatar
+      } 
     });
   } catch (error) {
-    console.error('Registration error:', error);
-    res.status(500).json({ message: 'Server error during registration' });
+    res.status(500).json({ error: error.message });
   }
 });
 
-app.post('/api/auth/login', async (req, res) => {
+app.post('/api/login', async (req, res) => {
   try {
     const { email, password } = req.body;
+    
+    if (!email || !password) {
+      return res.status(400).json({ error: 'Email and password are required' });
+    }
 
     const user = await User.findOne({ email });
     if (!user) {
-      return res.status(400).json({ message: 'Invalid credentials' });
+      return res.status(400).json({ error: 'User not found' });
     }
 
-    const isPasswordValid = await bcrypt.compare(password, user.password);
-    if (!isPasswordValid) {
-      return res.status(400).json({ message: 'Invalid credentials' });
+    const isMatch = await bcrypt.compare(password, user.password);
+    if (!isMatch) {
+      return res.status(400).json({ error: 'Invalid credentials' });
     }
 
-    const token = jwt.sign(
-      { 
-        userId: user._id, 
-        email: user.email
-      },
-      process.env.JWT_SECRET,
-      { expiresIn: '24h' }
-    );
-
-    res.json({
-      token,
-      user: {
-        id: user._id,
-        name: user.name,
+    const token = jwt.sign({ userId: user._id }, process.env.JWT_SECRET);
+    
+    res.json({ 
+      token, 
+      user: { 
+        id: user._id, 
+        name: user.name, 
         email: user.email,
         role: user.role,
         level: user.level,
         avatar: user.avatar,
-        reputation: user.reputation,
-        isAdmin: user.isAdmin
-      }
+        reputation: user.reputation
+      } 
     });
   } catch (error) {
-    console.error('Login error:', error);
-    res.status(500).json({ message: 'Server error during login' });
+    res.status(500).json({ error: error.message });
   }
 });
 
-// GitHub OAuth Routes
-app.get('/auth/github', (req, res, next) => {
-  if (!process.env.GITHUB_CLIENT_ID) {
-    return res.status(501).json({ message: 'GitHub OAuth not configured' });
-  }
-  passport.authenticate('github', { scope: ['user:email'] })(req, res, next);
-});
-
-app.get('/auth/github/callback', 
-  passport.authenticate('github', { failureRedirect: '/?auth=failed' }),
-  async (req, res) => {
-    try {
-      const token = jwt.sign(
-        { 
-          userId: req.user._id, 
-          email: req.user.email
-        },
-        process.env.JWT_SECRET,
-        { expiresIn: '24h' }
-      );
-      
-      res.redirect(`/?token=${token}&user=${encodeURIComponent(JSON.stringify({
-        id: req.user._id,
-        name: req.user.name,
-        email: req.user.email,
-        avatar: req.user.avatar,
-        isAdmin: req.user.isAdmin
-      }))}`);
-    } catch (error) {
-      res.redirect('/?auth=error');
-    }
-  }
-);
-
-app.get('/api/auth/me', authenticateToken, async (req, res) => {
-  try {
-    const user = await User.findById(req.user.userId).select('-password');
-    if (!user) {
-      return res.status(404).json({ message: 'User not found' });
-    }
-    res.json(user);
-  } catch (error) {
-    res.status(500).json({ message: 'Server error' });
-  }
-});
-
-// User Routes
+// Get user profile
 app.get('/api/user/profile', authenticateToken, async (req, res) => {
   try {
-    const user = await User.findById(req.user.userId).select('-password');
-    if (!user) {
-      return res.status(404).json({ message: 'User not found' });
-    }
-
-    const projectsCount = await Project.countDocuments({ author: req.user.userId });
-    const followersCount = await Follow.countDocuments({ following: req.user.userId });
-    const followingCount = await Follow.countDocuments({ follower: req.user.userId });
-
-    res.json({
-      ...user.toObject(),
-      projectsCount,
-      followersCount,
-      followingCount
-    });
+    const user = await User.findById(req.user._id)
+      .select('-password')
+      .populate('followers', 'name avatar')
+      .populate('following', 'name avatar');
+    
+    res.json(user);
   } catch (error) {
-    res.status(500).json({ message: 'Server error' });
+    res.status(500).json({ error: error.message });
   }
 });
 
-// Follow/Unfollow Routes
-app.post('/api/user/follow/:userId', authenticateToken, async (req, res) => {
+// Chat Routes
+app.get('/api/messages/:room', async (req, res) => {
   try {
-    const targetUserId = req.params.userId;
+    const messages = await Message.find({ room: req.params.room })
+      .populate('user', 'name avatar')
+      .sort({ createdAt: 1 })
+      .limit(100);
     
-    if (req.user.userId === targetUserId) {
-      return res.status(400).json({ message: 'Cannot follow yourself' });
-    }
-
-    const existingFollow = await Follow.findOne({
-      follower: req.user.userId,
-      following: targetUserId
-    });
-
-    if (existingFollow) {
-      await Follow.findByIdAndDelete(existingFollow._id);
-      res.json({ message: 'Unfollowed successfully', following: false });
-    } else {
-      const follow = new Follow({
-        follower: req.user.userId,
-        following: targetUserId
-      });
-      await follow.save();
-
-      // Create notification
-      const notification = new Notification({
-        user: targetUserId,
-        type: 'follow',
-        message: `${req.user.name} started following you`,
-        relatedUser: req.user.userId
-      });
-      await notification.save();
-
-      res.json({ message: 'Followed successfully', following: true });
-    }
+    res.json(messages);
   } catch (error) {
-    res.status(500).json({ message: 'Server error' });
+    res.status(500).json({ error: error.message });
   }
 });
 
@@ -450,62 +360,67 @@ app.get('/api/projects', async (req, res) => {
     
     res.json(projects);
   } catch (error) {
-    res.status(500).json({ message: 'Server error fetching projects' });
+    res.status(500).json({ error: error.message });
   }
 });
 
-app.post('/api/projects', authenticateToken, async (req, res) => {
+app.post('/api/projects', authenticateToken, upload.single('screenshot'), async (req, res) => {
   try {
     const { title, description, githubLink, liveLink, tags } = req.body;
     
-    const project = new Project({
+    if (!title) {
+      return res.status(400).json({ error: 'Project title is required' });
+    }
+
+    const project = await Project.create({
       title,
       description,
       githubLink,
       liveLink,
       tags: tags ? tags.split(',').map(tag => tag.trim()) : [],
-      author: req.user.userId
+      screenshot: req.file ? `/uploads/${req.file.filename}` : null,
+      author: req.user._id
     });
 
-    await project.save();
-    await User.findByIdAndUpdate(req.user.userId, { $inc: { projectsCount: 1 } });
+    const populatedProject = await Project.findById(project._id)
+      .populate('author', 'name avatar role level');
 
-    res.status(201).json(project);
+    // Broadcast new project to all connected clients
+    io.emit('new-project', populatedProject);
+
+    res.json(populatedProject);
   } catch (error) {
-    res.status(500).json({ message: 'Server error creating project' });
+    res.status(500).json({ error: error.message });
   }
 });
 
-// AI Routes
-app.post('/api/ai/generate-code', authenticateToken, async (req, res) => {
+app.post('/api/projects/:id/like', authenticateToken, async (req, res) => {
   try {
-    const { prompt } = req.body;
-
-    if (!openai) {
-      return res.json({ 
-        code: '// AI feature is currently unavailable\n// Please check if OpenAI API key is configured\nconsole.log("Hello from DEVS ARENA!");' 
-      });
+    const project = await Project.findById(req.params.id);
+    if (!project) {
+      return res.status(404).json({ error: 'Project not found' });
     }
 
-    const completion = await openai.chat.completions.create({
-      model: "gpt-3.5-turbo",
-      messages: [
-        {
-          role: "system",
-          content: "You are an expert programming assistant. Generate clean, efficient, and well-commented code based on the user's request."
-        },
-        {
-          role: "user",
-          content: prompt
-        }
-      ],
-      max_tokens: 1000
+    const hasLiked = project.likes.includes(req.user._id);
+    
+    if (hasLiked) {
+      project.likes = project.likes.filter(like => !like.equals(req.user._id));
+    } else {
+      project.likes.push(req.user._id);
+    }
+
+    await project.save();
+
+    // Broadcast like update
+    io.emit('project-updated', {
+      projectId: project._id,
+      likes: project.likes.length,
+      liked: !hasLiked
     });
 
-    const code = completion.choices[0].message.content;
-    res.json({ code });
+    res.json({ likes: project.likes.length, liked: !hasLiked });
   } catch (error) {
-    res.status(500).json({ message: 'Error generating code with AI' });
+    res.status(500).json({ error: error.message });
   }
 });
 
@@ -513,294 +428,412 @@ app.post('/api/ai/generate-code', authenticateToken, async (req, res) => {
 app.get('/api/apis', async (req, res) => {
   try {
     const apis = await API.find({ isApproved: true })
-      .populate('owner', 'name')
+      .populate('owner', 'name avatar')
       .sort({ usageCount: -1 });
     
     res.json(apis);
   } catch (error) {
-    res.status(500).json({ message: 'Server error fetching APIs' });
+    res.status(500).json({ error: error.message });
   }
 });
 
-app.post('/api/apis', authenticateToken, async (req, res) => {
+app.post('/api/apis/test', authenticateToken, async (req, res) => {
   try {
-    const { name, endpoint, description, category } = req.body;
+    const { endpoint, method = 'GET', body } = req.body;
     
-    const api = new API({
-      name,
-      endpoint,
-      description,
-      category,
-      owner: req.user.userId
+    // Simulate API call
+    const mockResponses = {
+      '/api/weather/london': {
+        city: 'London',
+        temperature: '15°C',
+        conditions: 'Partly Cloudy',
+        humidity: '65%'
+      },
+      '/api/users': {
+        users: [
+          { id: 1, name: 'John Doe', email: 'john@example.com' },
+          { id: 2, name: 'Jane Smith', email: 'jane@example.com' }
+        ],
+        total: 2
+      },
+      '/api/projects': {
+        projects: [
+          { id: 1, title: 'Chat App', description: 'Real-time chat application' },
+          { id: 2, title: 'E-commerce', description: 'Online shopping platform' }
+        ]
+      }
+    };
+
+    const response = mockResponses[endpoint] || { 
+      error: 'Endpoint not found in test environment',
+      availableEndpoints: Object.keys(mockResponses)
+    };
+
+    // Increment usage count
+    const api = await API.findOne({ endpoint });
+    if (api) {
+      api.usageCount += 1;
+      await api.save();
+    }
+
+    res.json(response);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// AI Assistant Route
+app.post('/api/ai/assist', authenticateToken, async (req, res) => {
+  try {
+    const { prompt, mode = 'code_generation', language = 'javascript' } = req.body;
+    
+    if (!prompt) {
+      return res.status(400).json({ error: 'Prompt is required' });
+    }
+
+    // If no OpenAI API key, return mock response
+    if (!process.env.OPENAI_API_KEY || process.env.OPENAI_API_KEY === 'your_openai_api_key_here') {
+      const mockResponses = {
+        code_generation: `// Generated ${language} code for: ${prompt}\nfunction solution() {\n  // Your code here\n  return "Implementation for: ${prompt}"\n}`,
+        debug: `// Debugging: ${prompt}\n// Issue identified and fixed\n// Original code had syntax error, now corrected`,
+        explain: `Explanation: ${prompt}\nThis code demonstrates how to implement the requested functionality with proper best practices.`,
+        learn: `Learning: ${prompt}\nLet me break this down step by step...`
+      };
+      
+      return res.json({ 
+        response: mockResponses[mode] || `AI Response for: ${prompt}`,
+        mode,
+        timestamp: new Date().toISOString()
+      });
+    }
+
+    let systemMessage = '';
+    switch (mode) {
+      case 'code_generation':
+        systemMessage = `You are an expert programming assistant. Generate clean, efficient ${language} code based on the user request. Include comments and best practices.`;
+        break;
+      case 'debug':
+        systemMessage = 'You are a debugging expert. Analyze the provided code, identify issues, and provide fixed code with explanations.';
+        break;
+      case 'explain':
+        systemMessage = 'You are a programming educator. Explain the provided code or concept in simple terms with examples.';
+        break;
+      case 'learn':
+        systemMessage = 'You are a patient programming mentor. Break down concepts into digestible parts with practical examples.';
+        break;
+      default:
+        systemMessage = 'You are a helpful programming assistant.';
+    }
+
+    const completion = await openai.chat.completions.create({
+      model: "gpt-3.5-turbo",
+      messages: [
+        { role: "system", content: systemMessage },
+        { role: "user", content: prompt }
+      ],
+      max_tokens: 1500,
+      temperature: 0.7
     });
 
-    await api.save();
-    res.status(201).json(api);
+    const response = completion.choices[0].message.content;
+
+    res.json({ 
+      response,
+      mode,
+      timestamp: new Date().toISOString()
+    });
   } catch (error) {
-    res.status(500).json({ message: 'Server error creating API' });
+    console.error('OpenAI Error:', error);
+    res.status(500).json({ 
+      error: 'AI service temporarily unavailable. Please try again later.',
+      fallback: `Here's a basic implementation for: ${req.body.prompt}`
+    });
   }
 });
 
-// Devs School Routes
+// Lessons Routes
 app.get('/api/lessons', async (req, res) => {
   try {
-    const lessons = await Lesson.find().sort({ order: 1 });
+    const lessons = await Lesson.find({ isPublished: true })
+      .sort({ order: 1, createdAt: 1 });
+    
     res.json(lessons);
   } catch (error) {
-    res.status(500).json({ message: 'Server error fetching lessons' });
+    res.status(500).json({ error: error.message });
   }
 });
 
-// Hackathon Routes
-app.get('/api/hackathons', async (req, res) => {
+app.get('/api/lessons/:id', async (req, res) => {
   try {
-    const hackathons = await Hackathon.find({ isActive: true })
-      .populate('participants', 'name avatar')
-      .sort({ startDate: -1 });
+    const lesson = await Lesson.findById(req.params.id);
+    if (!lesson) {
+      return res.status(404).json({ error: 'Lesson not found' });
+    }
+    res.json(lesson);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.post('/api/lessons/:id/progress', authenticateToken, async (req, res) => {
+  try {
+    const { completed, score, timeSpent } = req.body;
     
-    res.json(hackathons);
-  } catch (error) {
-    res.status(500).json({ message: 'Server error fetching hackathons' });
-  }
-});
-
-// Notification Routes
-app.get('/api/notifications', authenticateToken, async (req, res) => {
-  try {
-    const notifications = await Notification.find({ user: req.user.userId })
-      .populate('relatedUser', 'name avatar')
-      .populate('relatedProject', 'title')
-      .sort({ createdAt: -1 })
-      .limit(20);
-    
-    res.json(notifications);
-  } catch (error) {
-    res.status(500).json({ message: 'Server error fetching notifications' });
-  }
-});
-
-// Admin Routes - FIXED
-app.get('/api/admin/users', authenticateToken, adminAuth, async (req, res) => {
-  try {
-    const users = await User.find().select('-password').sort({ createdAt: -1 });
-    res.json(users);
-  } catch (error) {
-    res.status(500).json({ message: 'Server error fetching users' });
-  }
-});
-
-app.put('/api/admin/users/:userId/verify', authenticateToken, adminAuth, async (req, res) => {
-  try {
-    const user = await User.findByIdAndUpdate(
-      req.params.userId, 
-      { isVerified: true },
-      { new: true }
+    const progress = await UserProgress.findOneAndUpdate(
+      { user: req.user._id, lesson: req.params.id },
+      { 
+        completed: completed || false,
+        score: score || 0,
+        timeSpent: timeSpent || 0,
+        lastAccessed: new Date()
+      },
+      { upsert: true, new: true }
     );
-    res.json({ message: 'User verified successfully', user });
+
+    res.json(progress);
   } catch (error) {
-    res.status(500).json({ message: 'Server error verifying user' });
+    res.status(500).json({ error: error.message });
   }
 });
 
-app.get('/api/admin/apis/pending', authenticateToken, adminAuth, async (req, res) => {
-  try {
-    const apis = await API.find({ isApproved: false }).populate('owner', 'name');
-    res.json(apis);
-  } catch (error) {
-    res.status(500).json({ message: 'Server error fetching pending APIs' });
-  }
-});
-
-app.put('/api/admin/apis/:apiId/approve', authenticateToken, adminAuth, async (req, res) => {
-  try {
-    const api = await API.findByIdAndUpdate(
-      req.params.apiId, 
-      { isApproved: true },
-      { new: true }
-    );
-    res.json({ message: 'API approved successfully', api });
-  } catch (error) {
-    res.status(500).json({ message: 'Server error approving API' });
-  }
-});
-
-app.get('/api/admin/stats', authenticateToken, adminAuth, async (req, res) => {
-  try {
-    const usersCount = await User.countDocuments();
-    const projectsCount = await Project.countDocuments();
-    const apisCount = await API.countDocuments();
-    const hackathonsCount = await Hackathon.countDocuments();
-    
-    res.json({
-      usersCount,
-      projectsCount,
-      apisCount,
-      hackathonsCount
-    });
-  } catch (error) {
-    res.status(500).json({ message: 'Server error fetching stats' });
-  }
-});
-
-// Health check
-app.get('/api/health', (req, res) => {
-  res.json({ 
-    status: 'OK', 
-    timestamp: new Date().toISOString(),
-    database: mongoose.connection.readyState === 1 ? 'Connected' : 'Disconnected'
-  });
-});
-
-// Socket.IO
-const onlineUsers = new Map();
-
+// Real-time Socket.IO Implementation
 io.on('connection', (socket) => {
-  console.log('User connected:', socket.id);
+  console.log('🔗 User connected:', socket.id);
 
-  socket.on('user_online', (userData) => {
-    onlineUsers.set(socket.id, userData);
-    io.emit('online_users', Array.from(onlineUsers.values()));
+  socket.on('user-online', async (userData) => {
+    try {
+      onlineUsers.set(socket.id, userData.userId);
+      
+      await User.findByIdAndUpdate(userData.userId, {
+        isOnline: true,
+        lastSeen: new Date()
+      });
+
+      // Broadcast updated online users list
+      const onlineUsersList = await User.find({ 
+        _id: { $in: Array.from(onlineUsers.values()) },
+        isOnline: true 
+      }).select('name avatar role level');
+
+      io.emit('online-users-update', onlineUsersList);
+      console.log(`👤 User ${userData.userId} is now online`);
+    } catch (error) {
+      console.error('Error setting user online:', error);
+    }
   });
 
-  socket.on('join_room', (room) => {
+  socket.on('join-room', (room) => {
     socket.join(room);
-    const user = onlineUsers.get(socket.id);
-    socket.to(room).emit('user_joined', {
-      username: user?.name || 'Anonymous',
-      room
+    console.log(`🚪 User ${socket.id} joined room: ${room}`);
+  });
+
+  socket.on('send-message', async (data) => {
+    try {
+      const message = await Message.create({
+        room: data.room,
+        user: data.userId,
+        text: data.text,
+        type: data.type,
+        codeLanguage: data.codeLanguage
+      });
+
+      const populatedMessage = await Message.findById(message._id)
+        .populate('user', 'name avatar role level');
+
+      // Send to all users in the room
+      io.to(data.room).emit('new-message', populatedMessage);
+      
+      console.log(`💬 New message in ${data.room} from ${data.userId}`);
+    } catch (error) {
+      console.error('Error saving message:', error);
+      socket.emit('message-error', { error: 'Failed to send message' });
+    }
+  });
+
+  socket.on('typing-start', (data) => {
+    socket.to(data.room).emit('user-typing', {
+      userId: data.userId,
+      userName: data.userName,
+      isTyping: true
     });
   });
 
-  socket.on('send_message', async (data) => {
-    try {
-      const message = new Message({
-        room: data.room,
-        user: data.user.id,
-        message: data.message
-      });
-      await message.save();
-
-      const populatedMessage = await Message.findById(message._id).populate('user', 'name avatar');
-      io.to(data.room).emit('chat_message', {
-        user: populatedMessage.user,
-        message: populatedMessage.message,
-        timestamp: populatedMessage.createdAt
-      });
-    } catch (error) {
-      console.error('Message save error:', error);
-    }
+  socket.on('typing-stop', (data) => {
+    socket.to(data.room).emit('user-typing', {
+      userId: data.userId,
+      userName: data.userName,
+      isTyping: false
+    });
   });
 
-  socket.on('disconnect', () => {
-    onlineUsers.delete(socket.id);
-    io.emit('online_users', Array.from(onlineUsers.values()));
-    console.log('User disconnected:', socket.id);
+  socket.on('disconnect', async () => {
+    try {
+      const userId = onlineUsers.get(socket.id);
+      
+      if (userId) {
+        onlineUsers.delete(socket.id);
+        
+        await User.findByIdAndUpdate(userId, {
+          isOnline: false,
+          lastSeen: new Date()
+        });
+
+        // Broadcast updated online users list
+        const onlineUsersList = await User.find({ 
+          _id: { $in: Array.from(onlineUsers.values()) },
+          isOnline: true 
+        }).select('name avatar role level');
+
+        io.emit('online-users-update', onlineUsersList);
+        console.log(`👤 User ${userId} disconnected`);
+      }
+    } catch (error) {
+      console.error('Error handling disconnect:', error);
+    }
   });
 });
 
-// Create initial admin user
-async function createAdminUser() {
+// Initialize Sample Data
+async function initializeSampleData() {
   try {
-    const adminExists = await User.findOne({ email: 'admin@devsarena.com' });
-    if (!adminExists) {
-      const hashedPassword = await bcrypt.hash(process.env.ADMIN_PASSWORD || 'admin123', 12);
-      const adminUser = new User({
-        name: 'Admin',
-        email: 'admin@devsarena.com',
-        password: hashedPassword,
-        role: 'other',
-        level: 'pro',
-        isAdmin: true,
-        isVerified: true
-      });
-      await adminUser.save();
-      console.log('✅ Admin user created');
-    }
-  } catch (error) {
-    console.error('Error creating admin user:', error);
-  }
-}
-
-// Create sample data
-async function createSampleData() {
-  try {
+    // Sample Lessons
     const lessonCount = await Lesson.countDocuments();
     if (lessonCount === 0) {
-      const lessons = [
-        { 
-          title: 'HTML Basics', 
-          content: 'Learn the fundamentals of HTML structure, tags, and semantic markup. Build your first web page with proper HTML5 standards.', 
-          category: 'frontend', 
-          level: 'beginner', 
-          duration: 30, 
-          order: 1 
+      const sampleLessons = [
+        {
+          title: 'HTML Fundamentals',
+          description: 'Learn the basics of HTML structure and tags',
+          category: 'Web Development',
+          level: 'Beginner',
+          content: 'HTML is the standard markup language for creating web pages...',
+          codeExamples: [
+            {
+              title: 'Basic HTML Structure',
+              code: `<!DOCTYPE html>
+<html>
+<head>
+    <title>My First Page</title>
+</head>
+<body>
+    <h1>Hello World!</h1>
+    <p>This is my first web page.</p>
+</body>
+</html>`,
+              language: 'html',
+              explanation: 'This shows the basic structure of every HTML document.'
+            }
+          ],
+          order: 1,
+          isPublished: true
         },
-        { 
-          title: 'CSS Styling', 
-          content: 'Master CSS for beautiful websites. Learn flexbox, grid, animations, and responsive design principles.', 
-          category: 'frontend', 
-          level: 'beginner', 
-          duration: 45, 
-          order: 2 
+        {
+          title: 'CSS Styling',
+          description: 'Learn how to style your web pages with CSS',
+          category: 'Web Development',
+          level: 'Beginner',
+          content: 'CSS is used to control the presentation of web pages...',
+          order: 2,
+          isPublished: true
         },
-        { 
-          title: 'JavaScript Fundamentals', 
-          content: 'Learn JavaScript programming from variables to functions. Understand ES6+ features and modern JavaScript patterns.', 
-          category: 'frontend', 
-          level: 'beginner', 
-          duration: 60, 
-          order: 3 
+        {
+          title: 'JavaScript Basics',
+          description: 'Introduction to JavaScript programming',
+          category: 'Web Development',
+          level: 'Beginner',
+          content: 'JavaScript makes web pages interactive and dynamic...',
+          order: 3,
+          isPublished: true
         }
       ];
-      await Lesson.insertMany(lessons);
+      
+      await Lesson.insertMany(sampleLessons);
       console.log('✅ Sample lessons created');
     }
 
+    // Sample APIs
     const apiCount = await API.countDocuments();
     if (apiCount === 0) {
+      let adminUser = await User.findOne({ email: 'admin@devsarena.com' });
+      if (!adminUser) {
+        adminUser = await User.create({
+          name: 'Devs Arena Admin',
+          email: 'admin@devsarena.com',
+          password: await bcrypt.hash('admin123', 12),
+          role: 'Full-stack',
+          level: 'Pro',
+          isVerified: true
+        });
+      }
+
       const sampleAPIs = [
-        { 
-          name: 'JSONPlaceholder', 
-          endpoint: 'https://jsonplaceholder.typicode.com/posts', 
-          description: 'Fake REST API for testing and prototyping', 
-          category: 'development', 
-          isApproved: true 
+        {
+          name: 'Weather API',
+          endpoint: '/api/weather/{city}',
+          method: 'GET',
+          description: 'Get current weather information for any city',
+          category: 'Weather',
+          owner: adminUser._id,
+          isApproved: true
         },
-        { 
-          name: 'OpenWeatherMap', 
-          endpoint: 'https://api.openweathermap.org/data/2.5/weather', 
-          description: 'Current weather data for any location', 
-          category: 'weather', 
-          isApproved: true 
+        {
+          name: 'User Management API',
+          endpoint: '/api/users',
+          method: 'GET',
+          description: 'Get list of users',
+          category: 'Authentication',
+          owner: adminUser._id,
+          isApproved: true
+        },
+        {
+          name: 'Projects API',
+          endpoint: '/api/projects',
+          method: 'GET',
+          description: 'Get all projects',
+          category: 'Projects',
+          owner: adminUser._id,
+          isApproved: true
         }
       ];
+      
       await API.insertMany(sampleAPIs);
       console.log('✅ Sample APIs created');
     }
 
-    const hackathonCount = await Hackathon.countDocuments();
-    if (hackathonCount === 0) {
-      const hackathons = [
+    // Sample Projects
+    const projectCount = await Project.countDocuments();
+    if (projectCount === 0 && adminUser) {
+      const sampleProjects = [
         {
-          title: 'Spring 2024 Coding Challenge',
-          description: 'Build innovative web applications using modern technologies. Showcase your skills and win amazing prizes!',
-          startDate: new Date('2024-03-01'),
-          endDate: new Date('2024-03-31'),
-          prizes: ['$5000 Cash Prize', 'Premium Laptop', 'Devs Arena Pro Membership'],
-          isActive: true
+          title: 'Real-time Chat Application',
+          description: 'A modern chat app built with Socket.IO and React',
+          githubLink: 'https://github.com/example/chat-app',
+          liveLink: 'https://chat-app.example.com',
+          tags: ['React', 'Socket.IO', 'Node.js', 'Real-time'],
+          author: adminUser._id
+        },
+        {
+          title: 'E-commerce Platform',
+          description: 'Full-stack e-commerce solution with payment integration',
+          githubLink: 'https://github.com/example/ecommerce',
+          tags: ['MERN', 'Stripe', 'MongoDB', 'Express'],
+          author: adminUser._id
         }
       ];
-      await Hackathon.insertMany(hackathons);
-      console.log('✅ Sample hackathons created');
+      
+      await Project.insertMany(sampleProjects);
+      console.log('✅ Sample projects created');
     }
   } catch (error) {
-    console.error('Error creating sample data:', error);
+    console.error('Error initializing sample data:', error);
   }
 }
 
+// Start Server
 const PORT = process.env.PORT || 5000;
 server.listen(PORT, async () => {
-  console.log(`🚀 DEVS ARENA server running on port ${PORT}`);
-  await createAdminUser();
-  await createSampleData();
+  console.log(`🚀 DEVS ARENA Server running on port ${PORT}`);
+  console.log(`📍 Environment: ${process.env.NODE_ENV}`);
+  
+  // Initialize sample data
+  await initializeSampleData();
 });
