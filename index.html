@@ -72,10 +72,6 @@
             font-family: 'Courier New', monospace;
         }
         
-        .sidebar {
-            transition: all 0.3s ease;
-        }
-        
         .nav-link {
             position: relative;
             transition: all 0.3s ease;
@@ -123,32 +119,12 @@
             to { opacity: 1; transform: translateY(0); }
         }
         
-        .typing-indicator {
-            display: inline-block;
-            animation: typing 1.4s infinite;
-        }
-        
-        @keyframes typing {
-            0%, 60%, 100% { opacity: 0.3; }
-            30% { opacity: 1; }
-        }
-        
         .btn-primary {
             background: var(--primary-gradient);
             transition: all 0.3s ease;
         }
         
         .btn-primary:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.2);
-        }
-        
-        .btn-secondary {
-            background: var(--secondary-gradient);
-            transition: all 0.3s ease;
-        }
-        
-        .btn-secondary:hover {
             transform: translateY(-2px);
             box-shadow: 0 10px 20px rgba(0, 0, 0, 0.2);
         }
@@ -188,6 +164,11 @@
         .message-other {
             background: rgba(255, 255, 255, 0.05);
         }
+        
+        .tab-active {
+            background: rgba(0, 243, 255, 0.1);
+            border-bottom: 2px solid var(--neon-blue);
+        }
     </style>
 </head>
 <body class="min-h-screen">
@@ -219,6 +200,7 @@
                     <a href="#chat" class="nav-link px-4 py-2 rounded-lg transition-all">Chat</a>
                     <a href="#hackathons" class="nav-link px-4 py-2 rounded-lg transition-all">Hackathons</a>
                     <a href="#dashboard" class="nav-link px-4 py-2 rounded-lg transition-all">Dashboard</a>
+                    <a href="#admin" class="nav-link px-4 py-2 rounded-lg transition-all hidden" id="adminNav">Admin</a>
                 </div>
 
                 <!-- Search Bar -->
@@ -292,6 +274,9 @@
                 <a href="#dashboard" class="nav-link block p-3 rounded-lg transition-all">
                     <i class="fas fa-chart-line mr-3"></i>Dashboard
                 </a>
+                <a href="#admin" class="nav-link block p-3 rounded-lg transition-all hidden" id="mobileAdminNav">
+                    <i class="fas fa-shield-alt mr-3"></i>Admin
+                </a>
             </div>
             
             <div class="pt-6 border-t border-gray-700">
@@ -362,19 +347,19 @@
                 <div class="glass p-8 rounded-3xl max-w-5xl mx-auto mt-12">
                     <div class="grid grid-cols-2 md:grid-cols-4 gap-6 text-center">
                         <div>
-                            <div class="text-3xl font-bold gradient-text">10K+</div>
+                            <div class="text-3xl font-bold gradient-text" id="statsUsers">10K+</div>
                             <div class="text-gray-400">Active Developers</div>
                         </div>
                         <div>
-                            <div class="text-3xl font-bold gradient-text">500+</div>
-                            <div class="text-gray-400">Learning Modules</div>
-                        </div>
-                        <div>
-                            <div class="text-3xl font-bold gradient-text">2K+</div>
+                            <div class="text-3xl font-bold gradient-text" id="statsProjects">500+</div>
                             <div class="text-gray-400">Projects Shared</div>
                         </div>
                         <div>
-                            <div class="text-3xl font-bold gradient-text">50+</div>
+                            <div class="text-3xl font-bold gradient-text" id="statsLessons">200+</div>
+                            <div class="text-gray-400">Learning Modules</div>
+                        </div>
+                        <div>
+                            <div class="text-3xl font-bold gradient-text" id="statsHackathons">50+</div>
                             <div class="text-gray-400">Hackathons Hosted</div>
                         </div>
                     </div>
@@ -391,63 +376,8 @@
                         Master in-demand technologies with our interactive learning platform. Practice coding directly in your browser with instant feedback.
                     </p>
                     
-                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
-                        <div class="course-card glass p-6 rounded-xl card-hover cursor-pointer" data-course="html">
-                            <div class="flex items-center mb-4">
-                                <div class="w-12 h-12 bg-orange-500 rounded-lg flex items-center justify-center mr-4">
-                                    <i class="fab fa-html5 text-white text-xl"></i>
-                                </div>
-                                <div>
-                                    <h3 class="font-semibold text-lg">HTML</h3>
-                                    <div class="progress-bar mt-2">
-                                        <div class="progress-fill" style="width: 30%"></div>
-                                    </div>
-                                </div>
-                            </div>
-                            <p class="text-sm text-gray-400">Web structure fundamentals and semantic markup</p>
-                            <div class="flex justify-between items-center mt-4 text-xs text-gray-500">
-                                <span>12 lessons</span>
-                                <span>Beginner</span>
-                            </div>
-                        </div>
-                        
-                        <div class="course-card glass p-6 rounded-xl card-hover cursor-pointer" data-course="css">
-                            <div class="flex items-center mb-4">
-                                <div class="w-12 h-12 bg-blue-500 rounded-lg flex items-center justify-center mr-4">
-                                    <i class="fab fa-css3-alt text-white text-xl"></i>
-                                </div>
-                                <div>
-                                    <h3 class="font-semibold text-lg">CSS</h3>
-                                    <div class="progress-bar mt-2">
-                                        <div class="progress-fill" style="width: 15%"></div>
-                                    </div>
-                                </div>
-                            </div>
-                            <p class="text-sm text-gray-400">Styling, layouts, and responsive design</p>
-                            <div class="flex justify-between items-center mt-4 text-xs text-gray-500">
-                                <span>18 lessons</span>
-                                <span>Beginner</span>
-                            </div>
-                        </div>
-                        
-                        <div class="course-card glass p-6 rounded-xl card-hover cursor-pointer" data-course="javascript">
-                            <div class="flex items-center mb-4">
-                                <div class="w-12 h-12 bg-yellow-500 rounded-lg flex items-center justify-center mr-4">
-                                    <i class="fab fa-js-square text-white text-xl"></i>
-                                </div>
-                                <div>
-                                    <h3 class="font-semibold text-lg">JavaScript</h3>
-                                    <div class="progress-bar mt-2">
-                                        <div class="progress-fill" style="width: 5%"></div>
-                                    </div>
-                                </div>
-                            </div>
-                            <p class="text-sm text-gray-400">Interactive web development and dynamic content</p>
-                            <div class="flex justify-between items-center mt-4 text-xs text-gray-500">
-                                <span>24 lessons</span>
-                                <span>Intermediate</span>
-                            </div>
-                        </div>
+                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8" id="coursesGrid">
+                        <!-- Courses will be loaded here -->
                     </div>
 
                     <div id="lessonContent" class="hidden">
@@ -480,14 +410,133 @@
             </div>
         </section>
 
+        <!-- Projects Section -->
+        <section id="projects" class="section min-h-screen py-20">
+            <div class="container mx-auto px-4">
+                <div class="glass p-8 rounded-3xl">
+                    <div class="flex justify-between items-center mb-8">
+                        <h2 class="text-4xl font-bold gradient-text">Projects Hub</h2>
+                        <button id="createProjectBtn" class="btn-primary px-6 py-3 rounded-lg">
+                            <i class="fas fa-plus mr-2"></i>New Project
+                        </button>
+                    </div>
+                    
+                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6" id="projectsGrid">
+                        <!-- Projects will be loaded here -->
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- API Hub Section -->
+        <section id="api" class="section min-h-screen py-20">
+            <div class="container mx-auto px-4">
+                <div class="glass p-8 rounded-3xl">
+                    <h2 class="text-4xl font-bold mb-8 gradient-text text-center">API Hub</h2>
+                    
+                    <div class="grid md:grid-cols-2 gap-8">
+                        <div class="space-y-6">
+                            <div class="glass p-6 rounded-xl">
+                                <h3 class="text-xl font-semibold mb-4">Available APIs</h3>
+                                <div id="apisList" class="space-y-4">
+                                    <!-- APIs will be loaded here -->
+                                </div>
+                            </div>
+                            
+                            <div class="glass p-6 rounded-xl">
+                                <h3 class="text-xl font-semibold mb-4">Submit New API</h3>
+                                <form id="apiForm" class="space-y-4">
+                                    <input type="text" placeholder="API Name" class="w-full glass rounded-lg p-3 text-white placeholder-gray-400" required>
+                                    <textarea placeholder="Description" class="w-full glass rounded-lg p-3 text-white placeholder-gray-400" rows="3" required></textarea>
+                                    <input type="url" placeholder="Endpoint URL" class="w-full glass rounded-lg p-3 text-white placeholder-gray-400" required>
+                                    <select class="w-full glass rounded-lg p-3 text-white">
+                                        <option value="GET">GET</option>
+                                        <option value="POST">POST</option>
+                                        <option value="PUT">PUT</option>
+                                        <option value="DELETE">DELETE</option>
+                                    </select>
+                                    <button type="submit" class="w-full btn-primary py-3 rounded-lg">Submit API</button>
+                                </form>
+                            </div>
+                        </div>
+                        
+                        <div class="glass p-6 rounded-xl">
+                            <h3 class="text-xl font-semibold mb-4">API Testing Playground</h3>
+                            <div class="space-y-4">
+                                <input type="url" id="apiEndpoint" placeholder="Enter API endpoint" class="w-full glass rounded-lg p-3 text-white placeholder-gray-400">
+                                <select id="apiMethod" class="w-full glass rounded-lg p-3 text-white">
+                                    <option value="GET">GET</option>
+                                    <option value="POST">POST</option>
+                                    <option value="PUT">PUT</option>
+                                    <option value="DELETE">DELETE</option>
+                                </select>
+                                <textarea id="apiBody" placeholder="Request Body (JSON)" class="w-full glass rounded-lg p-3 text-white placeholder-gray-400" rows="4"></textarea>
+                                <button id="testApi" class="w-full btn-primary py-3 rounded-lg">Test API</button>
+                                <div class="bg-black p-4 rounded-lg mt-4">
+                                    <h4 class="font-semibold mb-2">Response:</h4>
+                                    <pre id="apiResponse" class="text-white font-mono text-sm"></pre>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Tools Section -->
+        <section id="tools" class="section min-h-screen py-20">
+            <div class="container mx-auto px-4">
+                <div class="glass p-8 rounded-3xl">
+                    <h2 class="text-4xl font-bold mb-8 gradient-text text-center">Developer Tools</h2>
+                    
+                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
+                        <div class="glass p-6 rounded-xl card-hover cursor-pointer" onclick="showTool('json')">
+                            <div class="text-3xl mb-4 text-green-400">
+                                <i class="fas fa-code"></i>
+                            </div>
+                            <h3 class="font-semibold mb-2 text-lg">JSON Formatter</h3>
+                            <p class="text-sm text-gray-400">Format and validate JSON data</p>
+                        </div>
+                        
+                        <div class="glass p-6 rounded-xl card-hover cursor-pointer" onclick="showTool('regex')">
+                            <div class="text-3xl mb-4 text-purple-400">
+                                <i class="fas fa-search"></i>
+                            </div>
+                            <h3 class="font-semibold mb-2 text-lg">Regex Tester</h3>
+                            <p class="text-sm text-gray-400">Test regular expressions</p>
+                        </div>
+                        
+                        <div class="glass p-6 rounded-xl card-hover cursor-pointer" onclick="showTool('base64')">
+                            <div class="text-3xl mb-4 text-blue-400">
+                                <i class="fas fa-exchange-alt"></i>
+                            </div>
+                            <h3 class="font-semibold mb-2 text-lg">Base64 Converter</h3>
+                            <p class="text-sm text-gray-400">Encode/decode Base64</p>
+                        </div>
+                    </div>
+                    
+                    <div id="toolContent" class="hidden">
+                        <div class="glass p-6 rounded-xl">
+                            <div class="flex justify-between items-center mb-6">
+                                <h3 id="toolTitle" class="text-2xl font-semibold"></h3>
+                                <button onclick="hideTool()" class="glass px-4 py-2 rounded-lg">
+                                    <i class="fas fa-arrow-left mr-2"></i>Back to Tools
+                                </button>
+                            </div>
+                            <div id="toolInterface">
+                                <!-- Tool interfaces will be loaded here -->
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
         <!-- AI Copilot Section -->
         <section id="ai" class="section min-h-screen py-20">
             <div class="container mx-auto px-4">
                 <div class="glass p-8 rounded-3xl">
                     <h2 class="text-4xl font-bold mb-8 gradient-text text-center">AI Coding Assistant</h2>
-                    <p class="text-center text-gray-300 mb-12 max-w-2xl mx-auto">
-                        Leverage artificial intelligence to write better code, understand complex concepts, and accelerate your learning.
-                    </p>
                     
                     <div class="grid md:grid-cols-2 gap-8">
                         <div class="space-y-6">
@@ -522,7 +571,7 @@
                                     placeholder="Paste your code here for a detailed explanation..."
                                     class="w-full h-32 glass rounded-lg p-4 text-white placeholder-gray-400 focus:outline-none focus:neon-glow mb-4"
                                 ></textarea>
-                                <button id="explainCode" class="btn-secondary px-6 py-3 rounded-lg w-full">
+                                <button id="explainCode" class="btn-primary px-6 py-3 rounded-lg w-full">
                                     <i class="fas fa-lightbulb mr-2"></i>Explain Code
                                 </button>
                             </div>
@@ -554,9 +603,6 @@
             <div class="container mx-auto px-4">
                 <div class="glass p-8 rounded-3xl">
                     <h2 class="text-4xl font-bold mb-8 gradient-text text-center">Global Developer Chat</h2>
-                    <p class="text-center text-gray-300 mb-12 max-w-2xl mx-auto">
-                        Connect with developers worldwide in real-time. Share knowledge, ask questions, and collaborate on projects.
-                    </p>
                     
                     <div class="grid md:grid-cols-4 gap-6 h-[600px]">
                         <!-- Channels Sidebar -->
@@ -574,12 +620,6 @@
                                 </button>
                                 <button class="channel-btn w-full text-left p-3 rounded-lg transition-all hover:bg-white/5" data-channel="ai">
                                     <i class="fas fa-robot mr-2 text-purple-400"></i>AI & ML
-                                </button>
-                                <button class="channel-btn w-full text-left p-3 rounded-lg transition-all hover:bg-white/5" data-channel="devops">
-                                    <i class="fas fa-cloud mr-2 text-yellow-400"></i>DevOps
-                                </button>
-                                <button class="channel-btn w-full text-left p-3 rounded-lg transition-all hover:bg-white/5" data-channel="career">
-                                    <i class="fas fa-briefcase mr-2 text-red-400"></i>Career
                                 </button>
                             </div>
                             
@@ -635,6 +675,107 @@
             </div>
         </section>
 
+        <!-- Hackathons Section -->
+        <section id="hackathons" class="section min-h-screen py-20">
+            <div class="container mx-auto px-4">
+                <div class="glass p-8 rounded-3xl">
+                    <h2 class="text-4xl font-bold mb-8 gradient-text text-center">Hackathons & Challenges</h2>
+                    
+                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6" id="hackathonsGrid">
+                        <!-- Hackathons will be loaded here -->
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Dashboard Section -->
+        <section id="dashboard" class="section min-h-screen py-20">
+            <div class="container mx-auto px-4">
+                <div class="glass p-8 rounded-3xl">
+                    <h2 class="text-4xl font-bold mb-8 gradient-text">Developer Dashboard</h2>
+                    
+                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+                        <div class="glass p-6 rounded-xl text-center">
+                            <div class="text-3xl font-bold gradient-text" id="dashProjects">0</div>
+                            <div class="text-gray-400">Projects</div>
+                        </div>
+                        <div class="glass p-6 rounded-xl text-center">
+                            <div class="text-3xl font-bold gradient-text" id="dashReputation">0</div>
+                            <div class="text-gray-400">Reputation</div>
+                        </div>
+                        <div class="glass p-6 rounded-xl text-center">
+                            <div class="text-3xl font-bold gradient-text" id="dashFollowers">0</div>
+                            <div class="text-gray-400">Followers</div>
+                        </div>
+                        <div class="glass p-6 rounded-xl text-center">
+                            <div class="text-3xl font-bold gradient-text" id="dashHackathons">0</div>
+                            <div class="text-gray-400">Hackathons</div>
+                        </div>
+                    </div>
+                    
+                    <div class="grid md:grid-cols-2 gap-8">
+                        <div class="glass p-6 rounded-xl">
+                            <h3 class="text-xl font-semibold mb-4">My Projects</h3>
+                            <div id="userProjects" class="space-y-4">
+                                <!-- User projects will be loaded here -->
+                            </div>
+                        </div>
+                        
+                        <div class="glass p-6 rounded-xl">
+                            <h3 class="text-xl font-semibold mb-4">Recent Activity</h3>
+                            <div id="userActivity" class="space-y-4">
+                                <!-- User activity will be loaded here -->
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Admin Section -->
+        <section id="admin" class="section min-h-screen py-20">
+            <div class="container mx-auto px-4">
+                <div class="glass p-8 rounded-3xl">
+                    <h2 class="text-4xl font-bold mb-8 gradient-text">Admin Panel</h2>
+                    
+                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+                        <div class="glass p-6 rounded-xl text-center">
+                            <div class="text-3xl font-bold gradient-text" id="adminUsers">0</div>
+                            <div class="text-gray-400">Total Users</div>
+                        </div>
+                        <div class="glass p-6 rounded-xl text-center">
+                            <div class="text-3xl font-bold gradient-text" id="adminProjects">0</div>
+                            <div class="text-gray-400">Total Projects</div>
+                        </div>
+                        <div class="glass p-6 rounded-xl text-center">
+                            <div class="text-3xl font-bold gradient-text" id="adminPending">0</div>
+                            <div class="text-gray-400">Pending APIs</div>
+                        </div>
+                        <div class="glass p-6 rounded-xl text-center">
+                            <div class="text-3xl font-bold gradient-text" id="adminOnline">0</div>
+                            <div class="text-gray-400">Online Users</div>
+                        </div>
+                    </div>
+                    
+                    <div class="grid md:grid-cols-2 gap-8">
+                        <div class="glass p-6 rounded-xl">
+                            <h3 class="text-xl font-semibold mb-4">User Management</h3>
+                            <div id="adminUsersList" class="space-y-4 max-h-96 overflow-y-auto">
+                                <!-- Users list will be loaded here -->
+                            </div>
+                        </div>
+                        
+                        <div class="glass p-6 rounded-xl">
+                            <h3 class="text-xl font-semibold mb-4">API Approvals</h3>
+                            <div id="adminApisList" class="space-y-4 max-h-96 overflow-y-auto">
+                                <!-- Pending APIs will be loaded here -->
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
         <!-- Auth Modals -->
         <div id="loginModal" class="fixed inset-0 bg-black/80 hidden items-center justify-center z-50 p-4">
             <div class="glass p-8 rounded-3xl max-w-md w-full neon-glow">
@@ -643,11 +784,11 @@
                 <form id="loginForm" class="space-y-4">
                     <div>
                         <label class="block text-gray-300 mb-2">Email</label>
-                        <input type="email" placeholder="your@email.com" class="w-full glass rounded-lg p-3 text-white placeholder-gray-400 focus:outline-none focus:neon-glow" required>
+                        <input type="email" name="email" placeholder="your@email.com" class="w-full glass rounded-lg p-3 text-white placeholder-gray-400 focus:outline-none focus:neon-glow" required>
                     </div>
                     <div>
                         <label class="block text-gray-300 mb-2">Password</label>
-                        <input type="password" placeholder="••••••••" class="w-full glass rounded-lg p-3 text-white placeholder-gray-400 focus:outline-none focus:neon-glow" required>
+                        <input type="password" name="password" placeholder="••••••••" class="w-full glass rounded-lg p-3 text-white placeholder-gray-400 focus:outline-none focus:neon-glow" required>
                     </div>
                     <button type="submit" class="w-full btn-primary py-3 rounded-lg font-semibold">
                         <i class="fas fa-sign-in-alt mr-2"></i>Login
@@ -684,21 +825,21 @@
                 <form id="registerForm" class="space-y-4">
                     <div>
                         <label class="block text-gray-300 mb-2">Full Name</label>
-                        <input type="text" placeholder="John Doe" class="w-full glass rounded-lg p-3 text-white placeholder-gray-400 focus:outline-none focus:neon-glow" required>
+                        <input type="text" name="fullName" placeholder="John Doe" class="w-full glass rounded-lg p-3 text-white placeholder-gray-400 focus:outline-none focus:neon-glow" required>
                     </div>
                     <div>
                         <label class="block text-gray-300 mb-2">Email</label>
-                        <input type="email" placeholder="your@email.com" class="w-full glass rounded-lg p-3 text-white placeholder-gray-400 focus:outline-none focus:neon-glow" required>
+                        <input type="email" name="email" placeholder="your@email.com" class="w-full glass rounded-lg p-3 text-white placeholder-gray-400 focus:outline-none focus:neon-glow" required>
                     </div>
                     <div>
                         <label class="block text-gray-300 mb-2">Password</label>
-                        <input type="password" placeholder="••••••••" class="w-full glass rounded-lg p-3 text-white placeholder-gray-400 focus:outline-none focus:neon-glow" required>
+                        <input type="password" name="password" placeholder="••••••••" class="w-full glass rounded-lg p-3 text-white placeholder-gray-400 focus:outline-none focus:neon-glow" required>
                     </div>
                     
                     <div class="grid grid-cols-2 gap-4">
                         <div>
                             <label class="block text-gray-300 mb-2">Country</label>
-                            <select class="w-full glass rounded-lg p-3 text-white focus:outline-none focus:neon-glow">
+                            <select name="country" class="w-full glass rounded-lg p-3 text-white focus:outline-none focus:neon-glow">
                                 <option value="">Select Country</option>
                                 <option value="US">United States</option>
                                 <option value="KE">Kenya</option>
@@ -709,7 +850,7 @@
                         </div>
                         <div>
                             <label class="block text-gray-300 mb-2">Skill Level</label>
-                            <select class="w-full glass rounded-lg p-3 text-white focus:outline-none focus:neon-glow">
+                            <select name="skillLevel" class="w-full glass rounded-lg p-3 text-white focus:outline-none focus:neon-glow">
                                 <option value="">Select Level</option>
                                 <option value="beginner">Beginner</option>
                                 <option value="intermediate">Intermediate</option>
@@ -720,7 +861,7 @@
                     
                     <div>
                         <label class="block text-gray-300 mb-2">Developer Type</label>
-                        <select class="w-full glass rounded-lg p-3 text-white focus:outline-none focus:neon-glow">
+                        <select name="developerType" class="w-full glass rounded-lg p-3 text-white focus:outline-none focus:neon-glow">
                             <option value="">Select Type</option>
                             <option value="frontend">Frontend</option>
                             <option value="backend">Backend</option>
@@ -733,7 +874,7 @@
                     
                     <div>
                         <label class="block text-gray-300 mb-2">Short Bio</label>
-                        <textarea placeholder="Tell us about yourself..." class="w-full glass rounded-lg p-3 text-white placeholder-gray-400 focus:outline-none focus:neon-glow" rows="3"></textarea>
+                        <textarea name="bio" placeholder="Tell us about yourself..." class="w-full glass rounded-lg p-3 text-white placeholder-gray-400 focus:outline-none focus:neon-glow" rows="3"></textarea>
                     </div>
 
                     <button type="submit" class="w-full btn-primary py-3 rounded-lg font-semibold">
@@ -745,6 +886,57 @@
                     Already have an account? 
                     <button id="showLogin" class="text-cyan-400 hover:underline font-medium">Login here</button>
                 </p>
+            </div>
+        </div>
+
+        <!-- Create Project Modal -->
+        <div id="createProjectModal" class="fixed inset-0 bg-black/80 hidden items-center justify-center z-50 p-4">
+            <div class="glass p-8 rounded-3xl max-w-2xl w-full neon-glow">
+                <h3 class="text-2xl font-bold mb-6 gradient-text text-center">Create New Project</h3>
+                
+                <form id="projectForm" class="space-y-4">
+                    <div class="grid md:grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-gray-300 mb-2">Project Name</label>
+                            <input type="text" name="name" placeholder="My Awesome Project" class="w-full glass rounded-lg p-3 text-white placeholder-gray-400" required>
+                        </div>
+                        <div>
+                            <label class="block text-gray-300 mb-2">Category</label>
+                            <select name="category" class="w-full glass rounded-lg p-3 text-white">
+                                <option value="web">Web Application</option>
+                                <option value="mobile">Mobile App</option>
+                                <option value="desktop">Desktop App</option>
+                                <option value="api">API</option>
+                                <option value="library">Library</option>
+                            </select>
+                        </div>
+                    </div>
+                    
+                    <div>
+                        <label class="block text-gray-300 mb-2">Description</label>
+                        <textarea name="description" placeholder="Describe your project..." class="w-full glass rounded-lg p-3 text-white placeholder-gray-400" rows="3" required></textarea>
+                    </div>
+                    
+                    <div>
+                        <label class="block text-gray-300 mb-2">Tech Stack (comma separated)</label>
+                        <input type="text" name="techStack" placeholder="JavaScript, React, Node.js" class="w-full glass rounded-lg p-3 text-white placeholder-gray-400">
+                    </div>
+                    
+                    <div class="grid md:grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-gray-300 mb-2">GitHub URL</label>
+                            <input type="url" name="githubUrl" placeholder="https://github.com/username/repo" class="w-full glass rounded-lg p-3 text-white placeholder-gray-400">
+                        </div>
+                        <div>
+                            <label class="block text-gray-300 mb-2">Live Demo URL</label>
+                            <input type="url" name="liveUrl" placeholder="https://myproject.com" class="w-full glass rounded-lg p-3 text-white placeholder-gray-400">
+                        </div>
+                    </div>
+
+                    <button type="submit" class="w-full btn-primary py-3 rounded-lg font-semibold">
+                        <i class="fas fa-plus mr-2"></i>Create Project
+                    </button>
+                </form>
             </div>
         </div>
     </main>
@@ -763,6 +955,8 @@
             mobileNav: document.getElementById('mobileNav'),
             closeMobileMenu: document.getElementById('closeMobileMenu'),
             navLinks: document.querySelectorAll('.nav-link'),
+            adminNav: document.getElementById('adminNav'),
+            mobileAdminNav: document.getElementById('mobileAdminNav'),
             
             // Auth
             authSection: document.getElementById('authSection'),
@@ -781,8 +975,14 @@
             // Sections
             sections: document.querySelectorAll('.section'),
 
+            // Home Stats
+            statsUsers: document.getElementById('statsUsers'),
+            statsProjects: document.getElementById('statsProjects'),
+            statsLessons: document.getElementById('statsLessons'),
+            statsHackathons: document.getElementById('statsHackathons'),
+
             // Learning
-            courseCards: document.querySelectorAll('.course-card'),
+            coursesGrid: document.getElementById('coursesGrid'),
             lessonContent: document.getElementById('lessonContent'),
             lessonTitle: document.getElementById('lessonTitle'),
             lessonText: document.getElementById('lessonText'),
@@ -790,6 +990,26 @@
             runCode: document.getElementById('runCode'),
             codeOutput: document.getElementById('codeOutput'),
             backToCourses: document.getElementById('backToCourses'),
+
+            // Projects
+            createProjectBtn: document.getElementById('createProjectBtn'),
+            projectsGrid: document.getElementById('projectsGrid'),
+            createProjectModal: document.getElementById('createProjectModal'),
+            projectForm: document.getElementById('projectForm'),
+
+            // API Hub
+            apisList: document.getElementById('apisList'),
+            apiForm: document.getElementById('apiForm'),
+            apiEndpoint: document.getElementById('apiEndpoint'),
+            apiMethod: document.getElementById('apiMethod'),
+            apiBody: document.getElementById('apiBody'),
+            testApi: document.getElementById('testApi'),
+            apiResponse: document.getElementById('apiResponse'),
+
+            // Tools
+            toolContent: document.getElementById('toolContent'),
+            toolTitle: document.getElementById('toolTitle'),
+            toolInterface: document.getElementById('toolInterface'),
 
             // AI
             aiPrompt: document.getElementById('aiPrompt'),
@@ -810,7 +1030,26 @@
             sendMessage: document.getElementById('sendMessage'),
             typingIndicator: document.getElementById('typingIndicator'),
             typingUsers: document.getElementById('typingUsers'),
-            onlineUsers: document.getElementById('onlineUsers')
+            onlineUsers: document.getElementById('onlineUsers'),
+
+            // Hackathons
+            hackathonsGrid: document.getElementById('hackathonsGrid'),
+
+            // Dashboard
+            dashProjects: document.getElementById('dashProjects'),
+            dashReputation: document.getElementById('dashReputation'),
+            dashFollowers: document.getElementById('dashFollowers'),
+            dashHackathons: document.getElementById('dashHackathons'),
+            userProjects: document.getElementById('userProjects'),
+            userActivity: document.getElementById('userActivity'),
+
+            // Admin
+            adminUsers: document.getElementById('adminUsers'),
+            adminProjects: document.getElementById('adminProjects'),
+            adminPending: document.getElementById('adminPending'),
+            adminOnline: document.getElementById('adminOnline'),
+            adminUsersList: document.getElementById('adminUsersList'),
+            adminApisList: document.getElementById('adminApisList')
         };
 
         // Navigation Functions
@@ -861,11 +1100,40 @@
             if (targetSection) {
                 targetSection.classList.add('active');
                 
+                // Load section data
+                loadSectionData(sectionId);
+                
                 // Scroll to top of section
                 window.scrollTo({
                     top: 80,
                     behavior: 'smooth'
                 });
+            }
+        }
+
+        function loadSectionData(sectionId) {
+            switch(sectionId) {
+                case 'home':
+                    loadHomeStats();
+                    break;
+                case 'learn':
+                    loadCourses();
+                    break;
+                case 'projects':
+                    loadProjects();
+                    break;
+                case 'api':
+                    loadAPIs();
+                    break;
+                case 'hackathons':
+                    loadHackathons();
+                    break;
+                case 'dashboard':
+                    loadDashboard();
+                    break;
+                case 'admin':
+                    loadAdminPanel();
+                    break;
             }
         }
 
@@ -903,7 +1171,7 @@
             });
 
             // Close modals when clicking outside
-            [elements.loginModal, elements.registerModal].forEach(modal => {
+            [elements.loginModal, elements.registerModal, elements.createProjectModal].forEach(modal => {
                 modal.addEventListener('click', (e) => {
                     if (e.target === modal) {
                         modal.classList.add('hidden');
@@ -935,6 +1203,7 @@
                         updateAuthUI();
                         elements.loginModal.classList.add('hidden');
                         initializeSocket();
+                        loadHomeStats();
                     } else {
                         alert(result.error);
                     }
@@ -972,6 +1241,7 @@
                         updateAuthUI();
                         elements.registerModal.classList.add('hidden');
                         initializeSocket();
+                        loadHomeStats();
                     } else {
                         alert(result.error);
                     }
@@ -983,6 +1253,52 @@
             // GitHub Login
             elements.githubLogin.addEventListener('click', () => {
                 window.location.href = '/auth/github';
+            });
+
+            // Create Project
+            elements.createProjectBtn.addEventListener('click', () => {
+                if (!currentUser) {
+                    elements.loginModal.classList.remove('hidden');
+                    return;
+                }
+                elements.createProjectModal.classList.remove('hidden');
+            });
+
+            elements.projectForm.addEventListener('submit', async (e) => {
+                e.preventDefault();
+                const formData = new FormData(e.target);
+                const data = {
+                    name: formData.get('name'),
+                    description: formData.get('description'),
+                    techStack: formData.get('techStack'),
+                    githubUrl: formData.get('githubUrl'),
+                    liveUrl: formData.get('liveUrl'),
+                    category: formData.get('category')
+                };
+
+                try {
+                    const token = localStorage.getItem('token');
+                    const response = await fetch('/api/projects', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': `Bearer ${token}`
+                        },
+                        body: JSON.stringify(data)
+                    });
+
+                    const result = await response.json();
+                    
+                    if (response.ok) {
+                        elements.createProjectModal.classList.add('hidden');
+                        loadProjects();
+                        alert('Project created successfully!');
+                    } else {
+                        alert(result.error);
+                    }
+                } catch (error) {
+                    alert('Failed to create project: ' + error.message);
+                }
             });
         }
 
@@ -1000,6 +1316,28 @@
                     </div>
                 `;
                 document.getElementById('logoutBtn').addEventListener('click', logout);
+                
+                // Show admin nav if user is admin
+                if (currentUser.isAdmin) {
+                    elements.adminNav.classList.remove('hidden');
+                    elements.mobileAdminNav.classList.remove('hidden');
+                }
+            } else {
+                elements.authSection.innerHTML = `
+                    <button id="loginBtn" class="glass px-4 py-2 rounded-lg hover:neon-glow transition-all">
+                        <i class="fas fa-sign-in-alt mr-2"></i>Login
+                    </button>
+                    <button id="registerBtn" class="btn-primary px-4 py-2 rounded-lg text-white">
+                        <i class="fas fa-user-plus mr-2"></i>Register
+                    </button>
+                `;
+                // Re-attach event listeners
+                document.getElementById('loginBtn').addEventListener('click', () => elements.loginModal.classList.remove('hidden'));
+                document.getElementById('registerBtn').addEventListener('click', () => elements.registerModal.classList.remove('hidden'));
+                
+                // Hide admin nav
+                elements.adminNav.classList.add('hidden');
+                elements.mobileAdminNav.classList.add('hidden');
             }
         }
 
@@ -1011,17 +1349,23 @@
                 socket = null;
             }
             updateAuthUI();
+            // Reload home to update stats
+            loadHomeStats();
         }
 
         // Check existing auth
         function checkAuth() {
             const token = localStorage.getItem('token');
             if (token) {
-                // Verify token and get user data
                 fetch('/api/users/me', {
                     headers: { 'Authorization': `Bearer ${token}` }
                 })
-                .then(response => response.json())
+                .then(response => {
+                    if (response.ok) {
+                        return response.json();
+                    }
+                    throw new Error('Not authenticated');
+                })
                 .then(user => {
                     currentUser = user;
                     updateAuthUI();
@@ -1033,15 +1377,299 @@
             }
         }
 
+        // Data Loading Functions
+        async function loadHomeStats() {
+            try {
+                const response = await fetch('/api/admin/stats');
+                if (response.ok) {
+                    const stats = await response.json();
+                    elements.statsUsers.textContent = stats.totalUsers;
+                    elements.statsProjects.textContent = stats.totalProjects;
+                    elements.statsHackathons.textContent = stats.totalHackathons;
+                }
+            } catch (error) {
+                console.error('Failed to load stats:', error);
+            }
+        }
+
+        async function loadCourses() {
+            try {
+                const response = await fetch('/api/lessons');
+                const lessons = await response.json();
+                
+                // Group lessons by course
+                const courses = {};
+                lessons.forEach(lesson => {
+                    if (!courses[lesson.course]) {
+                        courses[lesson.course] = {
+                            lessons: [],
+                            count: 0
+                        };
+                    }
+                    courses[lesson.course].lessons.push(lesson);
+                    courses[lesson.course].count++;
+                });
+
+                elements.coursesGrid.innerHTML = '';
+                for (const [courseName, courseData] of Object.entries(courses)) {
+                    const courseDiv = document.createElement('div');
+                    courseDiv.className = 'glass p-6 rounded-xl card-hover cursor-pointer';
+                    courseDiv.innerHTML = `
+                        <div class="flex items-center mb-4">
+                            <div class="w-12 h-12 bg-${getCourseColor(courseName)}-500 rounded-lg flex items-center justify-center mr-4">
+                                <i class="fas fa-${getCourseIcon(courseName)} text-white text-xl"></i>
+                            </div>
+                            <div>
+                                <h3 class="font-semibold text-lg">${courseName.toUpperCase()}</h3>
+                                <div class="progress-bar mt-2">
+                                    <div class="progress-fill" style="width: 0%"></div>
+                                </div>
+                            </div>
+                        </div>
+                        <p class="text-sm text-gray-400">${courseData.count} lessons</p>
+                    `;
+                    courseDiv.addEventListener('click', () => loadCourseLessons(courseName));
+                    elements.coursesGrid.appendChild(courseDiv);
+                }
+            } catch (error) {
+                console.error('Failed to load courses:', error);
+            }
+        }
+
+        function getCourseColor(course) {
+            const colors = {
+                html: 'orange',
+                css: 'blue',
+                javascript: 'yellow',
+                python: 'green',
+                node: 'green',
+                react: 'blue',
+                git: 'orange'
+            };
+            return colors[course] || 'gray';
+        }
+
+        function getCourseIcon(course) {
+            const icons = {
+                html: 'code',
+                css: 'palette',
+                javascript: 'bolt',
+                python: 'code',
+                node: 'server',
+                react: 'atom',
+                git: 'code-branch'
+            };
+            return icons[course] || 'book';
+        }
+
+        async function loadProjects() {
+            try {
+                const response = await fetch('/api/projects');
+                const data = await response.json();
+                
+                elements.projectsGrid.innerHTML = '';
+                data.projects.forEach(project => {
+                    const projectDiv = document.createElement('div');
+                    projectDiv.className = 'glass p-6 rounded-xl card-hover';
+                    projectDiv.innerHTML = `
+                        <div class="flex items-center mb-4">
+                            <img src="${project.owner.avatar || 'https://via.placeholder.com/40'}" 
+                                 alt="${project.owner.fullName}" 
+                                 class="w-10 h-10 rounded-full mr-3">
+                            <div>
+                                <h3 class="font-semibold">${project.name}</h3>
+                                <p class="text-sm text-gray-400">by ${project.owner.fullName}</p>
+                            </div>
+                        </div>
+                        <p class="text-gray-300 mb-4 text-sm">${project.description}</p>
+                        <div class="flex flex-wrap gap-2 mb-4">
+                            ${project.techStack.map(tech => 
+                                `<span class="glass px-2 py-1 rounded text-xs">${tech}</span>`
+                            ).join('')}
+                        </div>
+                        <div class="flex justify-between items-center text-sm text-gray-400">
+                            <div class="flex items-center space-x-4">
+                                <span><i class="fas fa-heart mr-1"></i> ${project.likes.length}</span>
+                                <span><i class="fas fa-comment mr-1"></i> ${project.comments.length}</span>
+                            </div>
+                            <span>${new Date(project.createdAt).toLocaleDateString()}</span>
+                        </div>
+                    `;
+                    elements.projectsGrid.appendChild(projectDiv);
+                });
+            } catch (error) {
+                console.error('Failed to load projects:', error);
+            }
+        }
+
+        async function loadAPIs() {
+            try {
+                const response = await fetch('/api/apis');
+                const apis = await response.json();
+                
+                elements.apisList.innerHTML = '';
+                apis.forEach(api => {
+                    const apiDiv = document.createElement('div');
+                    apiDiv.className = 'glass p-4 rounded-lg';
+                    apiDiv.innerHTML = `
+                        <div class="flex justify-between items-start mb-2">
+                            <h4 class="font-semibold">${api.name}</h4>
+                            <span class="glass px-2 py-1 rounded text-xs">${api.method}</span>
+                        </div>
+                        <p class="text-sm text-gray-400 mb-2">${api.description}</p>
+                        <div class="flex justify-between items-center text-xs">
+                            <code class="text-cyan-400">${api.endpoint}</code>
+                            <span class="text-gray-500">${api.usageCount} uses</span>
+                        </div>
+                    `;
+                    elements.apisList.appendChild(apiDiv);
+                });
+            } catch (error) {
+                console.error('Failed to load APIs:', error);
+            }
+        }
+
+        async function loadHackathons() {
+            try {
+                const response = await fetch('/api/hackathons');
+                const hackathons = await response.json();
+                
+                elements.hackathonsGrid.innerHTML = '';
+                hackathons.forEach(hackathon => {
+                    const hackathonDiv = document.createElement('div');
+                    hackathonDiv.className = 'glass p-6 rounded-xl card-hover';
+                    hackathonDiv.innerHTML = `
+                        <h3 class="font-semibold text-lg mb-2">${hackathon.name}</h3>
+                        <p class="text-gray-300 mb-4 text-sm">${hackathon.description}</p>
+                        <div class="flex justify-between items-center text-sm text-gray-400 mb-4">
+                            <span>${hackathon.participants.length} participants</span>
+                            <span class="${hackathon.isActive ? 'text-green-400' : 'text-red-400'}">
+                                ${hackathon.isActive ? 'Active' : 'Ended'}
+                            </span>
+                        </div>
+                        <button class="w-full glass py-2 rounded-lg hover:neon-glow transition-all">
+                            ${hackathon.isActive ? 'Join Hackathon' : 'View Results'}
+                        </button>
+                    `;
+                    elements.hackathonsGrid.appendChild(hackathonDiv);
+                });
+            } catch (error) {
+                console.error('Failed to load hackathons:', error);
+            }
+        }
+
+        async function loadDashboard() {
+            if (!currentUser) return;
+            
+            try {
+                const token = localStorage.getItem('token');
+                
+                // Load stats
+                const statsResponse = await fetch('/api/dashboard/stats', {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                if (statsResponse.ok) {
+                    const stats = await statsResponse.json();
+                    elements.dashProjects.textContent = stats.projects;
+                    elements.dashReputation.textContent = stats.reputation;
+                    elements.dashFollowers.textContent = stats.followers;
+                    elements.dashHackathons.textContent = stats.hackathons;
+                }
+                
+                // Load user projects
+                const projectsResponse = await fetch(`/api/projects/user/${currentUser._id}`, {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                if (projectsResponse.ok) {
+                    const projects = await projectsResponse.json();
+                    elements.userProjects.innerHTML = projects.map(project => `
+                        <div class="glass p-4 rounded-lg">
+                            <h4 class="font-semibold">${project.name}</h4>
+                            <p class="text-sm text-gray-400 mt-1">${project.description}</p>
+                            <div class="flex justify-between items-center mt-2 text-xs text-gray-500">
+                                <span>${project.likes.length} likes</span>
+                                <span>${new Date(project.createdAt).toLocaleDateString()}</span>
+                            </div>
+                        </div>
+                    `).join('');
+                }
+            } catch (error) {
+                console.error('Failed to load dashboard:', error);
+            }
+        }
+
+        async function loadAdminPanel() {
+            if (!currentUser || !currentUser.isAdmin) return;
+            
+            try {
+                const token = localStorage.getItem('token');
+                
+                // Load admin stats
+                const statsResponse = await fetch('/api/admin/stats', {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                if (statsResponse.ok) {
+                    const stats = await statsResponse.json();
+                    elements.adminUsers.textContent = stats.totalUsers;
+                    elements.adminProjects.textContent = stats.totalProjects;
+                    elements.adminPending.textContent = stats.pendingAPIs;
+                    elements.adminOnline.textContent = stats.onlineUsers;
+                }
+                
+                // Load users
+                const usersResponse = await fetch('/api/admin/users', {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                if (usersResponse.ok) {
+                    const users = await usersResponse.json();
+                    elements.adminUsersList.innerHTML = users.map(user => `
+                        <div class="glass p-3 rounded-lg flex justify-between items-center">
+                            <div class="flex items-center space-x-3">
+                                <img src="${user.avatar || 'https://via.placeholder.com/32'}" 
+                                     alt="${user.fullName}" 
+                                     class="w-8 h-8 rounded-full">
+                                <div>
+                                    <div class="font-semibold">${user.fullName}</div>
+                                    <div class="text-xs text-gray-400">${user.email}</div>
+                                </div>
+                            </div>
+                            <div class="flex space-x-2">
+                                <button class="text-xs glass px-2 py-1 rounded ${user.isBanned ? 'bg-red-500' : 'bg-green-500'}">
+                                    ${user.isBanned ? 'Banned' : 'Active'}
+                                </button>
+                            </div>
+                        </div>
+                    `).join('');
+                }
+                
+                // Load pending APIs
+                const apisResponse = await fetch('/api/admin/apis', {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                if (apisResponse.ok) {
+                    const apis = await apisResponse.json();
+                    const pendingApis = apis.filter(api => !api.isApproved);
+                    elements.adminApisList.innerHTML = pendingApis.map(api => `
+                        <div class="glass p-3 rounded-lg">
+                            <div class="flex justify-between items-start mb-2">
+                                <h4 class="font-semibold">${api.name}</h4>
+                                <span class="glass px-2 py-1 rounded text-xs">${api.method}</span>
+                            </div>
+                            <p class="text-sm text-gray-400 mb-2">${api.description}</p>
+                            <div class="flex justify-between items-center">
+                                <code class="text-xs text-cyan-400">${api.endpoint}</code>
+                                <button class="text-xs btn-primary px-3 py-1 rounded">Approve</button>
+                            </div>
+                        </div>
+                    `).join('');
+                }
+            } catch (error) {
+                console.error('Failed to load admin panel:', error);
+            }
+        }
+
         // Learning System
         function setupLearning() {
-            elements.courseCards.forEach(card => {
-                card.addEventListener('click', async () => {
-                    const course = card.dataset.course;
-                    await loadCourseLessons(course);
-                });
-            });
-
             elements.backToCourses.addEventListener('click', () => {
                 elements.lessonContent.classList.add('hidden');
                 document.querySelector('#learn .grid').classList.remove('hidden');
@@ -1092,6 +1720,121 @@
             elements.lessonTitle.textContent = lesson.title;
             elements.lessonText.innerHTML = DOMPurify.sanitize(marked.parse(lesson.content));
             elements.codeEditor.value = lesson.codeExample || '';
+        }
+
+        // Tools System
+        function showTool(tool) {
+            document.querySelector('#tools .grid').classList.add('hidden');
+            elements.toolContent.classList.remove('hidden');
+            
+            const tools = {
+                json: {
+                    title: 'JSON Formatter',
+                    html: `
+                        <textarea id="jsonInput" placeholder="Paste your JSON here..." class="w-full h-40 glass rounded-lg p-4 text-white placeholder-gray-400 mb-4"></textarea>
+                        <button onclick="formatJSON()" class="w-full btn-primary py-3 rounded-lg mb-4">Format JSON</button>
+                        <div class="bg-black p-4 rounded-lg">
+                            <h4 class="font-semibold mb-2">Formatted JSON:</h4>
+                            <pre id="jsonOutput" class="text-white font-mono text-sm"></pre>
+                        </div>
+                    `
+                },
+                regex: {
+                    title: 'Regex Tester',
+                    html: `
+                        <input type="text" id="regexPattern" placeholder="Regular Expression" class="w-full glass rounded-lg p-3 text-white placeholder-gray-400 mb-2">
+                        <textarea id="regexText" placeholder="Test text..." class="w-full h-32 glass rounded-lg p-4 text-white placeholder-gray-400 mb-4"></textarea>
+                        <button onclick="testRegex()" class="w-full btn-primary py-3 rounded-lg mb-4">Test Regex</button>
+                        <div class="bg-black p-4 rounded-lg">
+                            <h4 class="font-semibold mb-2">Results:</h4>
+                            <div id="regexOutput" class="text-white font-mono text-sm"></div>
+                        </div>
+                    `
+                },
+                base64: {
+                    title: 'Base64 Converter',
+                    html: `
+                        <textarea id="base64Input" placeholder="Enter text to encode/decode..." class="w-full h-32 glass rounded-lg p-4 text-white placeholder-gray-400 mb-4"></textarea>
+                        <div class="flex space-x-4 mb-4">
+                            <button onclick="base64Encode()" class="flex-1 btn-primary py-3 rounded-lg">Encode</button>
+                            <button onclick="base64Decode()" class="flex-1 glass py-3 rounded-lg">Decode</button>
+                        </div>
+                        <div class="bg-black p-4 rounded-lg">
+                            <h4 class="font-semibold mb-2">Result:</h4>
+                            <pre id="base64Output" class="text-white font-mono text-sm"></pre>
+                        </div>
+                    `
+                }
+            };
+            
+            elements.toolTitle.textContent = tools[tool].title;
+            elements.toolInterface.innerHTML = tools[tool].html;
+        }
+
+        function hideTool() {
+            elements.toolContent.classList.add('hidden');
+            document.querySelector('#tools .grid').classList.remove('hidden');
+        }
+
+        async function formatJSON() {
+            const input = document.getElementById('jsonInput').value;
+            try {
+                const response = await fetch('/api/tools/json-format', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ json: input })
+                });
+                const result = await response.json();
+                document.getElementById('jsonOutput').textContent = result.formatted;
+            } catch (error) {
+                document.getElementById('jsonOutput').textContent = 'Error: Invalid JSON';
+            }
+        }
+
+        async function testRegex() {
+            const pattern = document.getElementById('regexPattern').value;
+            const text = document.getElementById('regexText').value;
+            try {
+                const response = await fetch('/api/tools/regex-test', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ pattern, text })
+                });
+                const result = await response.json();
+                document.getElementById('regexOutput').textContent = JSON.stringify(result, null, 2);
+            } catch (error) {
+                document.getElementById('regexOutput').textContent = 'Error: Invalid regex pattern';
+            }
+        }
+
+        async function base64Encode() {
+            const text = document.getElementById('base64Input').value;
+            try {
+                const response = await fetch('/api/tools/base64', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ action: 'encode', text })
+                });
+                const result = await response.json();
+                document.getElementById('base64Output').textContent = result.result;
+            } catch (error) {
+                document.getElementById('base64Output').textContent = 'Error: Encoding failed';
+            }
+        }
+
+        async function base64Decode() {
+            const text = document.getElementById('base64Input').value;
+            try {
+                const response = await fetch('/api/tools/base64', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ action: 'decode', text })
+                });
+                const result = await response.json();
+                document.getElementById('base64Output').textContent = result.result;
+            } catch (error) {
+                document.getElementById('base64Output').textContent = 'Error: Decoding failed';
+            }
         }
 
         // AI Functions
@@ -1156,6 +1899,41 @@
 
             elements.clearAiOutput.addEventListener('click', () => {
                 elements.aiOutput.textContent = '';
+            });
+        }
+
+        // API Testing
+        function setupAPITesting() {
+            elements.testApi.addEventListener('click', async () => {
+                const endpoint = elements.apiEndpoint.value;
+                const method = elements.apiMethod.value;
+                const body = elements.apiBody.value;
+                
+                if (!endpoint) {
+                    alert('Please enter an API endpoint');
+                    return;
+                }
+
+                try {
+                    const token = localStorage.getItem('token');
+                    const response = await fetch('/api/apis/test', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': `Bearer ${token}`
+                        },
+                        body: JSON.stringify({
+                            url: endpoint,
+                            method,
+                            body: body ? JSON.parse(body) : null
+                        })
+                    });
+
+                    const result = await response.json();
+                    elements.apiResponse.textContent = JSON.stringify(result, null, 2);
+                } catch (error) {
+                    elements.apiResponse.textContent = 'Error: ' + error.message;
+                }
             });
         }
 
@@ -1235,9 +2013,7 @@
                 general: "General discussions about programming and technology",
                 frontend: "HTML, CSS, JavaScript, frameworks, and frontend development",
                 backend: "Server-side programming, databases, APIs, and architecture",
-                ai: "Artificial Intelligence, Machine Learning, and data science",
-                devops: "Infrastructure, deployment, CI/CD, and cloud technologies",
-                career: "Job opportunities, interviews, and career development"
+                ai: "Artificial Intelligence, Machine Learning, and data science"
             };
             elements.channelDescription.textContent = descriptions[channel] || "Community discussions";
             
@@ -1305,21 +2081,16 @@
             elements.messageInput.value = '';
         }
 
-        // Initialize sample data
-        async function initializeSampleData() {
-            // This would typically be handled by the server
-            console.log('Initializing sample data...');
-        }
-
         // Initialize everything when DOM is loaded
         document.addEventListener('DOMContentLoaded', () => {
             setupNavigation();
             setupAuth();
             setupLearning();
             setupAI();
+            setupAPITesting();
             setupChat();
             checkAuth();
-            initializeSampleData();
+            loadHomeStats();
         });
     </script>
 </body>
