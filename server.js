@@ -35,7 +35,7 @@ app.use(limiter);
 
 // Session configuration
 app.use(session({
-  secret: process.env.JWT_SECRET,
+  secret: process.env.JWT_SECRET || 'dev-secret',
   resave: false,
   saveUninitialized: false
 }));
@@ -45,14 +45,19 @@ app.use(passport.initialize());
 app.use(passport.session());
 
 // MongoDB connection
-mongoose.connect(process.env.MONGODB_URI)
+mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/devsarena')
   .then(() => console.log('MongoDB connected'))
   .catch(err => console.log('MongoDB connection error:', err));
 
-// OpenAI initialization
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY
-});
+// OpenAI initialization (optional - won't break if no key)
+let openai;
+if (process.env.OPENAI_API_KEY) {
+  openai = new OpenAI({
+    apiKey: process.env.OPENAI_API_KEY
+  });
+} else {
+  console.log('OpenAI API key not provided - AI features disabled');
+}
 
 // MongoDB Schemas
 const userSchema = new mongoose.Schema({
@@ -60,8 +65,8 @@ const userSchema = new mongoose.Schema({
   email: { type: String, required: true, unique: true },
   password: { type: String },
   country: String,
-  skillLevel: { type: String, enum: ['beginner', 'intermediate', 'advanced', 'expert'] },
-  developerType: { type: String, enum: ['frontend', 'backend', 'full-stack', 'student', 'mobile', 'devops'] },
+  skillLevel: { type: String, enum: ['beginner', 'intermediate', 'advanced', 'expert'], default: 'beginner' },
+  developerType: { type: String, enum: ['frontend', 'backend', 'full-stack', 'student', 'mobile', 'devops'], default: 'full-stack' },
   bio: String,
   avatar: String,
   banner: String,
@@ -116,7 +121,7 @@ const apiSchema = new mongoose.Schema({
   name: String,
   description: String,
   endpoint: String,
-  method: { type: String, enum: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH'] },
+  method: { type: String, enum: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH'], default: 'GET' },
   headers: Object,
   body: Object,
   category: String,
@@ -131,7 +136,7 @@ const lessonSchema = new mongoose.Schema({
   content: String,
   course: String,
   order: Number,
-  difficulty: { type: String, enum: ['beginner', 'intermediate', 'advanced'] },
+  difficulty: { type: String, enum: ['beginner', 'intermediate', 'advanced'], default: 'beginner' },
   codeExample: String,
   quiz: [{
     question: String,
@@ -181,32 +186,34 @@ const Hackathon = mongoose.model('Hackathon', hackathonSchema);
 const Tool = mongoose.model('Tool', toolSchema);
 
 // GitHub OAuth Strategy
-passport.use(new GitHubStrategy({
-  clientID: process.env.GITHUB_CLIENT_ID,
-  clientSecret: process.env.GITHUB_CLIENT_SECRET,
-  callbackURL: process.env.GITHUB_CALLBACK_URL
-}, async (accessToken, refreshToken, profile, done) => {
-  try {
-    let user = await User.findOne({ githubId: profile.id });
-    
-    if (!user) {
-      user = new User({
-        githubId: profile.id,
-        fullName: profile.displayName || profile.username,
-        email: profile.emails?.[0]?.value || `${profile.username}@github.com`,
-        avatar: profile.photos?.[0]?.value,
-        bio: profile._json.bio || '',
-        developerType: 'full-stack',
-        isVerified: true
-      });
-      await user.save();
+if (process.env.GITHUB_CLIENT_ID && process.env.GITHUB_CLIENT_SECRET) {
+  passport.use(new GitHubStrategy({
+    clientID: process.env.GITHUB_CLIENT_ID,
+    clientSecret: process.env.GITHUB_CLIENT_SECRET,
+    callbackURL: process.env.GITHUB_CALLBACK_URL || 'http://localhost:5000/auth/github/callback'
+  }, async (accessToken, refreshToken, profile, done) => {
+    try {
+      let user = await User.findOne({ githubId: profile.id });
+      
+      if (!user) {
+        user = new User({
+          githubId: profile.id,
+          fullName: profile.displayName || profile.username,
+          email: profile.emails?.[0]?.value || `${profile.username}@github.com`,
+          avatar: profile.photos?.[0]?.value,
+          bio: profile._json.bio || '',
+          developerType: 'full-stack',
+          isVerified: true
+        });
+        await user.save();
+      }
+      
+      return done(null, user);
+    } catch (error) {
+      return done(error, null);
     }
-    
-    return done(null, user);
-  } catch (error) {
-    return done(error, null);
-  }
-}));
+  }));
+}
 
 passport.serializeUser((user, done) => {
   done(null, user.id);
@@ -228,7 +235,7 @@ const authenticateToken = async (req, res, next) => {
 
   if (token) {
     try {
-      const decoded = jwt.verify(token, process.env.JWT_SECRET);
+      const decoded = jwt.verify(token, process.env.JWT_SECRET || 'dev-secret');
       req.user = await User.findById(decoded.id).select('-password');
       next();
     } catch (error) {
@@ -283,35 +290,62 @@ app.get('/', (req, res) => {
 // Auth routes
 app.post('/api/register', async (req, res) => {
   try {
+    console.log('Registration attempt:', req.body);
+    
     const { fullName, email, password, country, skillLevel, developerType, bio } = req.body;
     
-    const existingUser = await User.findOne({ email });
-    if (existingUser) {
-      return res.status(400).json({ error: 'User already exists' });
+    // Validate required fields
+    if (!fullName || !email || !password) {
+      return res.status(400).json({ error: 'Full name, email, and password are required' });
     }
 
+    // Check if user already exists
+    const existingUser = await User.findOne({ email });
+    if (existingUser) {
+      return res.status(400).json({ error: 'User already exists with this email' });
+    }
+
+    // Hash password
     const hashedPassword = await bcrypt.hash(password, 12);
+    
+    // Create user
     const user = new User({
       fullName,
       email,
       password: hashedPassword,
-      country,
-      skillLevel,
-      developerType,
-      bio
+      country: country || '',
+      skillLevel: skillLevel || 'beginner',
+      developerType: developerType || 'full-stack',
+      bio: bio || ''
     });
 
     await user.save();
+    console.log('User created successfully:', user.email);
 
-    const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET);
+    // Generate token
+    const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET || 'dev-secret');
+    
+    // Return user data without password
+    const userResponse = {
+      _id: user._id,
+      fullName: user.fullName,
+      email: user.email,
+      country: user.country,
+      skillLevel: user.skillLevel,
+      developerType: user.developerType,
+      bio: user.bio,
+      avatar: user.avatar,
+      reputation: user.reputation,
+      isAdmin: user.isAdmin,
+      createdAt: user.createdAt
+    };
+
     res.json({ 
       token, 
-      user: { 
-        ...user._doc, 
-        password: undefined 
-      } 
+      user: userResponse 
     });
   } catch (error) {
+    console.error('Registration error:', error);
     res.status(500).json({ error: error.message });
   }
 });
@@ -319,9 +353,18 @@ app.post('/api/register', async (req, res) => {
 app.post('/api/login', async (req, res) => {
   try {
     const { email, password } = req.body;
-    const user = await User.findOne({ email });
+    
+    if (!email || !password) {
+      return res.status(400).json({ error: 'Email and password are required' });
+    }
 
-    if (!user || !(await bcrypt.compare(password, user.password))) {
+    const user = await User.findOne({ email });
+    if (!user) {
+      return res.status(400).json({ error: 'Invalid credentials' });
+    }
+
+    const isPasswordValid = await bcrypt.compare(password, user.password);
+    if (!isPasswordValid) {
       return res.status(400).json({ error: 'Invalid credentials' });
     }
 
@@ -329,39 +372,54 @@ app.post('/api/login', async (req, res) => {
       return res.status(403).json({ error: 'Account has been suspended' });
     }
 
-    const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET);
+    const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET || 'dev-secret');
     user.isOnline = true;
     await user.save();
 
+    // Return user data without password
+    const userResponse = {
+      _id: user._id,
+      fullName: user.fullName,
+      email: user.email,
+      country: user.country,
+      skillLevel: user.skillLevel,
+      developerType: user.developerType,
+      bio: user.bio,
+      avatar: user.avatar,
+      reputation: user.reputation,
+      isAdmin: user.isAdmin,
+      createdAt: user.createdAt
+    };
+
     res.json({ 
       token, 
-      user: { 
-        ...user._doc, 
-        password: undefined 
-      } 
+      user: userResponse 
     });
   } catch (error) {
+    console.error('Login error:', error);
     res.status(500).json({ error: error.message });
   }
 });
 
-// GitHub OAuth routes
-app.get('/auth/github', passport.authenticate('github', { scope: ['user:email'] }));
+// GitHub OAuth routes (only if configured)
+if (process.env.GITHUB_CLIENT_ID && process.env.GITHUB_CLIENT_SECRET) {
+  app.get('/auth/github', passport.authenticate('github', { scope: ['user:email'] }));
 
-app.get('/auth/github/callback',
-  passport.authenticate('github', { failureRedirect: '/' }),
-  async (req, res) => {
-    try {
-      const token = jwt.sign({ id: req.user._id }, process.env.JWT_SECRET);
-      req.user.isOnline = true;
-      await req.user.save();
-      
-      res.redirect(`/?token=${token}`);
-    } catch (error) {
-      res.redirect('/?error=auth_failed');
+  app.get('/auth/github/callback',
+    passport.authenticate('github', { failureRedirect: '/' }),
+    async (req, res) => {
+      try {
+        const token = jwt.sign({ id: req.user._id }, process.env.JWT_SECRET || 'dev-secret');
+        req.user.isOnline = true;
+        await req.user.save();
+        
+        res.redirect(`/?token=${token}`);
+      } catch (error) {
+        res.redirect('/?error=auth_failed');
+      }
     }
-  }
-);
+  );
+}
 
 // User routes
 app.get('/api/users', authenticateToken, async (req, res) => {
@@ -393,146 +451,35 @@ app.get('/api/users/:id', authenticateToken, async (req, res) => {
   }
 });
 
-app.put('/api/users/:id', authenticateToken, upload.single('avatar'), async (req, res) => {
-  try {
-    if (req.user._id.toString() !== req.params.id && !req.user.isAdmin) {
-      return res.status(403).json({ error: 'Not authorized' });
-    }
-
-    const updates = { ...req.body };
-    if (req.file) {
-      updates.avatar = `/uploads/${req.file.filename}`;
-    }
-
-    const user = await User.findByIdAndUpdate(
-      req.params.id,
-      updates,
-      { new: true }
-    ).select('-password');
-
-    res.json(user);
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
-});
-
-app.post('/api/users/:id/follow', authenticateToken, async (req, res) => {
-  try {
-    const userToFollow = await User.findById(req.params.id);
-    const currentUser = await User.findById(req.user._id);
-
-    if (!userToFollow.followers.includes(req.user._id)) {
-      userToFollow.followers.push(req.user._id);
-      currentUser.following.push(userToFollow._id);
-      
-      await userToFollow.save();
-      await currentUser.save();
-    }
-
-    res.json({ message: 'Followed successfully' });
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
-});
-
-// Chat routes
-app.get('/api/messages/:channel', authenticateToken, async (req, res) => {
-  try {
-    const messages = await Message.find({ channel: req.params.channel })
-      .populate('user', 'fullName avatar')
-      .sort({ timestamp: 1 })
-      .limit(100);
-    res.json(messages);
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
-});
-
 // Project routes
 app.get('/api/projects', async (req, res) => {
   try {
-    const { page = 1, limit = 10, category } = req.query;
-    const query = category ? { category, isPublic: true } : { isPublic: true };
-    
-    const projects = await Project.find(query)
+    const projects = await Project.find({ isPublic: true })
       .populate('owner', 'fullName avatar')
       .sort({ createdAt: -1 })
-      .limit(limit * 1)
-      .skip((page - 1) * limit);
-    
-    const total = await Project.countDocuments(query);
+      .limit(20);
     
     res.json({
       projects,
-      totalPages: Math.ceil(total / limit),
-      currentPage: page,
-      total
+      total: projects.length
     });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
 });
 
-app.get('/api/projects/user/:userId', authenticateToken, async (req, res) => {
-  try {
-    const projects = await Project.find({ owner: req.params.userId })
-      .populate('owner', 'fullName avatar')
-      .sort({ createdAt: -1 });
-    res.json(projects);
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
-});
-
-app.post('/api/projects', authenticateToken, upload.single('image'), async (req, res) => {
+app.post('/api/projects', authenticateToken, async (req, res) => {
   try {
     const project = new Project({
       ...req.body,
       owner: req.user._id,
-      techStack: JSON.parse(req.body.techStack || '[]'),
-      image: req.file ? `/uploads/${req.file.filename}` : null
+      techStack: Array.isArray(req.body.techStack) ? req.body.techStack : 
+                (req.body.techStack ? req.body.techStack.split(',').map(t => t.trim()) : [])
     });
     await project.save();
     
     const populatedProject = await Project.findById(project._id)
       .populate('owner', 'fullName avatar');
-    
-    res.json(populatedProject);
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
-});
-
-app.post('/api/projects/:id/like', authenticateToken, async (req, res) => {
-  try {
-    const project = await Project.findById(req.params.id);
-    if (!project.likes.includes(req.user._id)) {
-      project.likes.push(req.user._id);
-      await project.save();
-      
-      // Add reputation to project owner
-      await User.findByIdAndUpdate(project.owner, {
-        $inc: { reputation: 5 }
-      });
-    }
-    res.json(project);
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
-});
-
-app.post('/api/projects/:id/comment', authenticateToken, async (req, res) => {
-  try {
-    const project = await Project.findById(req.params.id);
-    project.comments.push({
-      user: req.user._id,
-      content: req.body.content
-    });
-    await project.save();
-    
-    const populatedProject = await Project.findById(project._id)
-      .populate('owner', 'fullName avatar')
-      .populate('comments.user', 'fullName avatar');
     
     res.json(populatedProject);
   } catch (error) {
@@ -563,37 +510,13 @@ app.post('/api/apis', authenticateToken, async (req, res) => {
   }
 });
 
-app.post('/api/apis/test', authenticateToken, async (req, res) => {
-  try {
-    const { url, method, headers, body } = req.body;
-    
-    const response = await fetch(url, {
-      method,
-      headers: headers || {},
-      body: method !== 'GET' ? JSON.stringify(body) : undefined
-    });
-
-    const data = await response.json();
-    
-    // Update usage count
-    await API.findOneAndUpdate(
-      { endpoint: url },
-      { $inc: { usageCount: 1 } }
-    );
-    
-    res.json({
-      status: response.status,
-      headers: Object.fromEntries(response.headers),
-      data
-    });
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
-});
-
-// AI Routes
+// AI Routes (only if OpenAI is configured)
 app.post('/api/ai/code', authenticateToken, async (req, res) => {
   try {
+    if (!openai) {
+      return res.status(503).json({ error: 'AI features are not configured' });
+    }
+
     const { prompt, language } = req.body;
     
     const completion = await openai.chat.completions.create({
@@ -619,6 +542,10 @@ app.post('/api/ai/code', authenticateToken, async (req, res) => {
 
 app.post('/api/ai/explain', authenticateToken, async (req, res) => {
   try {
+    if (!openai) {
+      return res.status(503).json({ error: 'AI features are not configured' });
+    }
+
     const { code } = req.body;
     
     const completion = await openai.chat.completions.create({
@@ -642,31 +569,6 @@ app.post('/api/ai/explain', authenticateToken, async (req, res) => {
   }
 });
 
-app.post('/api/ai/review', authenticateToken, async (req, res) => {
-  try {
-    const { code, language } = req.body;
-    
-    const completion = await openai.chat.completions.create({
-      model: "gpt-3.5-turbo",
-      messages: [
-        {
-          role: "system",
-          content: `You are a senior ${language} developer reviewing code. Provide constructive feedback on code quality, best practices, performance, and security.`
-        },
-        {
-          role: "user",
-          content: `Review this ${language} code:\n\n${code}`
-        }
-      ],
-      max_tokens: 800
-    });
-
-    res.json({ review: completion.choices[0].message.content });
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
-});
-
 // Learning routes
 app.get('/api/lessons', async (req, res) => {
   try {
@@ -679,36 +581,11 @@ app.get('/api/lessons', async (req, res) => {
   }
 });
 
-app.get('/api/lessons/:id', async (req, res) => {
-  try {
-    const lesson = await Lesson.findById(req.params.id);
-    res.json(lesson);
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
-});
-
 // Tools routes
-app.get('/api/tools', async (req, res) => {
-  try {
-    const tools = await Tool.find().sort({ usageCount: -1 });
-    res.json(tools);
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
-});
-
 app.post('/api/tools/json-format', async (req, res) => {
   try {
     const { json } = req.body;
     const formatted = JSON.stringify(JSON.parse(json), null, 2);
-    
-    // Log tool usage
-    await Tool.findOneAndUpdate(
-      { name: 'JSON Formatter' },
-      { $inc: { usageCount: 1 } },
-      { upsert: true }
-    );
     
     res.json({ formatted });
   } catch (error) {
@@ -722,13 +599,6 @@ app.post('/api/tools/regex-test', async (req, res) => {
     const regex = new RegExp(pattern, flags);
     const matches = text.match(regex);
     const testResult = regex.test(text);
-    
-    // Log tool usage
-    await Tool.findOneAndUpdate(
-      { name: 'Regex Tester' },
-      { $inc: { usageCount: 1 } },
-      { upsert: true }
-    );
     
     res.json({ matches, testResult });
   } catch (error) {
@@ -747,13 +617,6 @@ app.post('/api/tools/base64', async (req, res) => {
       result = Buffer.from(text, 'base64').toString('utf8');
     }
     
-    // Log tool usage
-    await Tool.findOneAndUpdate(
-      { name: 'Base64 Encoder/Decoder' },
-      { $inc: { usageCount: 1 } },
-      { upsert: true }
-    );
-    
     res.json({ result });
   } catch (error) {
     res.status(400).json({ error: 'Invalid input' });
@@ -768,104 +631,6 @@ app.get('/api/hackathons', async (req, res) => {
       .populate('winner', 'fullName avatar')
       .sort({ startDate: -1 });
     res.json(hackathons);
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
-});
-
-app.post('/api/hackathons', authenticateToken, requireAdmin, async (req, res) => {
-  try {
-    const hackathon = new Hackathon(req.body);
-    await hackathon.save();
-    res.json(hackathon);
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
-});
-
-app.post('/api/hackathons/:id/join', authenticateToken, async (req, res) => {
-  try {
-    const hackathon = await Hackathon.findById(req.params.id);
-    if (!hackathon.participants.includes(req.user._id)) {
-      hackathon.participants.push(req.user._id);
-      await hackathon.save();
-    }
-    res.json(hackathon);
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
-});
-
-// Admin routes
-app.get('/api/admin/stats', authenticateToken, requireAdmin, async (req, res) => {
-  try {
-    const stats = {
-      totalUsers: await User.countDocuments(),
-      totalProjects: await Project.countDocuments(),
-      totalAPIs: await API.countDocuments(),
-      pendingAPIs: await API.countDocuments({ isApproved: false }),
-      onlineUsers: await User.countDocuments({ isOnline: true }),
-      totalHackathons: await Hackathon.countDocuments(),
-      activeHackathons: await Hackathon.countDocuments({ isActive: true }),
-      bannedUsers: await User.countDocuments({ isBanned: true })
-    };
-
-    res.json(stats);
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
-});
-
-app.get('/api/admin/users', authenticateToken, requireAdmin, async (req, res) => {
-  try {
-    const users = await User.find().select('-password').sort({ createdAt: -1 });
-    res.json(users);
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
-});
-
-app.put('/api/admin/users/:id', authenticateToken, requireAdmin, async (req, res) => {
-  try {
-    const { isBanned, isAdmin, isVerified } = req.body;
-    const user = await User.findByIdAndUpdate(
-      req.params.id,
-      { isBanned, isAdmin, isVerified },
-      { new: true }
-    ).select('-password');
-    
-    res.json(user);
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
-});
-
-app.get('/api/admin/apis', authenticateToken, requireAdmin, async (req, res) => {
-  try {
-    const apis = await API.find().populate('owner', 'fullName email').sort({ createdAt: -1 });
-    res.json(apis);
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
-});
-
-app.post('/api/admin/apis/:id/approve', authenticateToken, requireAdmin, async (req, res) => {
-  try {
-    const api = await API.findByIdAndUpdate(
-      req.params.id,
-      { isApproved: true },
-      { new: true }
-    );
-    res.json(api);
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
-});
-
-app.delete('/api/admin/apis/:id', authenticateToken, requireAdmin, async (req, res) => {
-  try {
-    await API.findByIdAndDelete(req.params.id);
-    res.json({ message: 'API deleted successfully' });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
@@ -893,6 +658,26 @@ app.get('/api/dashboard/stats', authenticateToken, async (req, res) => {
   }
 });
 
+// Admin routes
+app.get('/api/admin/stats', authenticateToken, requireAdmin, async (req, res) => {
+  try {
+    const stats = {
+      totalUsers: await User.countDocuments(),
+      totalProjects: await Project.countDocuments(),
+      totalAPIs: await API.countDocuments(),
+      pendingAPIs: await API.countDocuments({ isApproved: false }),
+      onlineUsers: await User.countDocuments({ isOnline: true }),
+      totalHackathons: await Hackathon.countDocuments(),
+      activeHackathons: await Hackathon.countDocuments({ isActive: true }),
+      bannedUsers: await User.countDocuments({ isBanned: true })
+    };
+
+    res.json(stats);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
 // Socket.IO for real-time features
 io.on('connection', (socket) => {
   console.log('User connected:', socket.id);
@@ -907,10 +692,7 @@ io.on('connection', (socket) => {
         channel: data.channel,
         user: data.userId,
         content: data.content,
-        type: data.type,
-        fileName: data.fileName,
-        fileUrl: data.fileUrl,
-        language: data.language
+        type: data.type
       });
       await message.save();
 
@@ -938,7 +720,7 @@ io.on('connection', (socket) => {
 // Initialize sample data
 async function initializeSampleData() {
   try {
-    // Create admin user
+    // Create admin user if doesn't exist
     const adminExists = await User.findOne({ email: 'admin@devsarena.com' });
     if (!adminExists) {
       const hashedPassword = await bcrypt.hash('admin123', 12);
@@ -963,101 +745,19 @@ async function initializeSampleData() {
       const sampleLessons = [
         {
           title: 'HTML Basics',
-          content: `# HTML Basics
-
-HTML (HyperText Markup Language) is the standard markup language for creating web pages. It describes the structure of a web page.
-
-## Basic HTML Structure
-
-Every HTML document has a basic structure:
-
-\`\`\`html
-<!DOCTYPE html>
-<html>
-<head>
-    <title>Page Title</title>
-</head>
-<body>
-    <h1>My First Heading</h1>
-    <p>My first paragraph.</p>
-</body>
-</html>
-\`\`\`
-
-## Key Elements
-
-- **<!DOCTYPE html>**: Defines the document type
-- **<html>**: The root element
-- **<head>**: Contains meta information
-- **<title>**: Sets the page title
-- **<body>**: Contains the visible content
-- **<h1> to <h6>**: Heading tags
-- **<p>**: Paragraph tag
-
-## Try It Yourself
-
-Edit the code in the editor to create your own HTML page!`,
+          content: `# HTML Basics\n\nHTML is the standard markup language for creating Web pages.`,
           course: 'html',
           order: 1,
           difficulty: 'beginner',
-          codeExample: '<!DOCTYPE html>\n<html>\n<head>\n    <title>My Page</title>\n</head>\n<body>\n    <h1>Welcome to My Website</h1>\n    <p>This is my first web page!</p>\n</body>\n</html>',
-          quiz: [
-            {
-              question: 'What does HTML stand for?',
-              options: [
-                'Hyper Text Markup Language',
-                'High Tech Modern Language',
-                'Hyper Transfer Markup Language',
-                'Home Tool Markup Language'
-              ],
-              correctAnswer: 0,
-              explanation: 'HTML stands for Hyper Text Markup Language, which is the standard markup language for creating web pages.'
-            }
-          ]
+          codeExample: '<!DOCTYPE html>\n<html>\n<head>\n<title>Page Title</title>\n</head>\n<body>\n<h1>My First Heading</h1>\n<p>My first paragraph.</p>\n</body>\n</html>'
         },
         {
           title: 'CSS Introduction',
-          content: `# CSS Introduction
-
-CSS (Cascading Style Sheets) is used to style and layout web pages.
-
-## Basic CSS Syntax
-
-\`\`\`css
-selector {
-    property: value;
-}
-\`\`\`
-
-## Example
-
-\`\`\`css
-body {
-    background-color: lightblue;
-}
-
-h1 {
-    color: white;
-    text-align: center;
-}
-\`\`\``,
+          content: `# CSS Introduction\n\nCSS is used to style and layout web pages.`,
           course: 'css',
           order: 1,
           difficulty: 'beginner',
-          codeExample: '<!DOCTYPE html>\n<html>\n<head>\n    <style>\n        body {\n            background-color: lightblue;\n        }\n        h1 {\n            color: white;\n            text-align: center;\n        }\n    </style>\n</head>\n<body>\n    <h1>Styled Heading</h1>\n    <p>This page has a light blue background.</p>\n</body>\n</html>',
-          quiz: [
-            {
-              question: 'What does CSS stand for?',
-              options: [
-                'Cascading Style Sheets',
-                'Computer Style Sheets',
-                'Creative Style System',
-                'Colorful Style Sheets'
-              ],
-              correctAnswer: 0,
-              explanation: 'CSS stands for Cascading Style Sheets, which is used for describing the presentation of web pages.'
-            }
-          ]
+          codeExample: 'body {\\n  background-color: lightblue;\\n}\\n\\nh1 {\\n  color: white;\\n  text-align: center;\\n}'
         }
       ];
       await Lesson.insertMany(sampleLessons);
@@ -1075,34 +775,10 @@ h1 {
           method: 'GET',
           category: 'Testing',
           isApproved: true
-        },
-        {
-          name: 'OpenWeatherMap',
-          description: 'Weather Data and API',
-          endpoint: 'https://api.openweathermap.org/data/2.5/weather',
-          method: 'GET',
-          category: 'Weather',
-          isApproved: true
         }
       ];
       await API.insertMany(sampleAPIs);
       console.log('Sample APIs added');
-    }
-
-    // Create sample hackathon
-    const hackathonCount = await Hackathon.countDocuments();
-    if (hackathonCount === 0) {
-      const sampleHackathon = new Hackathon({
-        name: 'DEVS ARENA Launch Hackathon',
-        description: 'Celebrate the launch of DEVS ARENA with this exciting coding challenge!',
-        rules: 'Build any web application using modern technologies. Be creative and innovative!',
-        prize: '$1000 cash prize + Featured on DEVS ARENA homepage',
-        startDate: new Date(),
-        endDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // 7 days from now
-        isActive: true
-      });
-      await sampleHackathon.save();
-      console.log('Sample hackathon added');
     }
 
   } catch (error) {
@@ -1113,5 +789,6 @@ h1 {
 const PORT = process.env.PORT || 5000;
 server.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
+  console.log(`Visit: http://localhost:${PORT}`);
   initializeSampleData();
 });
