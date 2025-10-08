@@ -27,14 +27,13 @@ app.use(express.json());
 app.use(express.static('.'));
 app.use(passport.initialize());
 
-// MongoDB Connection with better error handling
+// MongoDB Connection
 mongoose.connect(process.env.MONGODB_URI, {
   useNewUrlParser: true,
   useUnifiedTopology: true,
 })
 .then(() => {
   console.log('✅ MongoDB Connected Successfully');
-  // Drop the problematic username index if it exists
   return mongoose.connection.collection('users').dropIndex('username_1').catch(() => {
     console.log('ℹ️ No username index to drop or already dropped');
   });
@@ -44,7 +43,7 @@ mongoose.connect(process.env.MONGODB_URI, {
   process.exit(1);
 });
 
-// MongoDB Schemas - Fixed to handle the username index issue
+// MongoDB Schemas
 const userSchema = new mongoose.Schema({
   name: { type: String, required: true },
   email: { type: String, required: true, unique: true },
@@ -64,11 +63,9 @@ const userSchema = new mongoose.Schema({
   githubId: String,
   createdAt: { type: Date, default: Date.now }
 }, {
-  // Prevent Mongoose from creating indexes automatically
   autoIndex: false
 });
 
-// Remove any existing problematic indexes and create only what we need
 userSchema.index({ email: 1 }, { unique: true });
 
 const projectSchema = new mongoose.Schema({
@@ -216,49 +213,44 @@ const authenticateToken = (req, res, next) => {
     return res.status(401).json({ message: 'Access token required' });
   }
 
-  jwt.verify(token, process.env.JWT_SECRET, (err, user) => {
+  jwt.verify(token, process.env.JWT_SECRET, (err, decoded) => {
     if (err) {
       return res.status(403).json({ message: 'Invalid token' });
     }
-    req.user = user;
+    req.user = decoded;
     next();
   });
 };
 
-const adminAuth = (req, res, next) => {
-  if (!req.user.isAdmin) {
-    return res.status(403).json({ message: 'Admin access required' });
+const adminAuth = async (req, res, next) => {
+  try {
+    const user = await User.findById(req.user.userId);
+    if (!user || !user.isAdmin) {
+      return res.status(403).json({ message: 'Admin access required' });
+    }
+    next();
+  } catch (error) {
+    res.status(500).json({ message: 'Server error' });
   }
-  next();
 };
 
 // Routes
 
-// Auth Routes - FIXED REGISTRATION
+// Auth Routes
 app.post('/api/auth/register', async (req, res) => {
   try {
-    console.log('Registration attempt:', req.body);
     const { name, email, password, role, level } = req.body;
     
-    // Basic validation
     if (!name || !email || !password) {
       return res.status(400).json({ message: 'Name, email, and password are required' });
     }
 
-    if (password.length < 6) {
-      return res.status(400).json({ message: 'Password must be at least 6 characters' });
-    }
-
-    // Check if user exists
     const existingUser = await User.findOne({ email });
     if (existingUser) {
       return res.status(400).json({ message: 'User already exists with this email' });
     }
 
-    // Hash password
     const hashedPassword = await bcrypt.hash(password, 12);
-
-    // Create user
     const user = new User({
       name,
       email,
@@ -268,14 +260,11 @@ app.post('/api/auth/register', async (req, res) => {
     });
 
     await user.save();
-    console.log('User created successfully:', user.email);
 
-    // Generate JWT
     const token = jwt.sign(
       { 
         userId: user._id, 
-        email: user.email,
-        isAdmin: user.isAdmin 
+        email: user.email
       },
       process.env.JWT_SECRET,
       { expiresIn: '24h' }
@@ -296,12 +285,7 @@ app.post('/api/auth/register', async (req, res) => {
     });
   } catch (error) {
     console.error('Registration error:', error);
-    
-    if (error.code === 11000) {
-      return res.status(400).json({ message: 'Email already exists' });
-    }
-    
-    res.status(500).json({ message: 'Server error during registration: ' + error.message });
+    res.status(500).json({ message: 'Server error during registration' });
   }
 });
 
@@ -309,28 +293,20 @@ app.post('/api/auth/login', async (req, res) => {
   try {
     const { email, password } = req.body;
 
-    if (!email || !password) {
-      return res.status(400).json({ message: 'Email and password are required' });
-    }
-
-    // Find user
     const user = await User.findOne({ email });
     if (!user) {
       return res.status(400).json({ message: 'Invalid credentials' });
     }
 
-    // Check password
     const isPasswordValid = await bcrypt.compare(password, user.password);
     if (!isPasswordValid) {
       return res.status(400).json({ message: 'Invalid credentials' });
     }
 
-    // Generate JWT
     const token = jwt.sign(
       { 
         userId: user._id, 
-        email: user.email,
-        isAdmin: user.isAdmin 
+        email: user.email
       },
       process.env.JWT_SECRET,
       { expiresIn: '24h' }
@@ -364,19 +340,13 @@ app.get('/auth/github', (req, res, next) => {
 });
 
 app.get('/auth/github/callback', 
-  (req, res, next) => {
-    if (!process.env.GITHUB_CLIENT_ID) {
-      return res.redirect('/?auth=not_configured');
-    }
-    passport.authenticate('github', { failureRedirect: '/?auth=failed' })(req, res, next);
-  },
+  passport.authenticate('github', { failureRedirect: '/?auth=failed' }),
   async (req, res) => {
     try {
       const token = jwt.sign(
         { 
           userId: req.user._id, 
-          email: req.user.email,
-          isAdmin: req.user.isAdmin 
+          email: req.user.email
         },
         process.env.JWT_SECRET,
         { expiresIn: '24h' }
@@ -390,7 +360,6 @@ app.get('/auth/github/callback',
         isAdmin: req.user.isAdmin
       }))}`);
     } catch (error) {
-      console.error('GitHub callback error:', error);
       res.redirect('/?auth=error');
     }
   }
@@ -404,7 +373,6 @@ app.get('/api/auth/me', authenticateToken, async (req, res) => {
     }
     res.json(user);
   } catch (error) {
-    console.error('Auth me error:', error);
     res.status(500).json({ message: 'Server error' });
   }
 });
@@ -412,9 +380,7 @@ app.get('/api/auth/me', authenticateToken, async (req, res) => {
 // User Routes
 app.get('/api/user/profile', authenticateToken, async (req, res) => {
   try {
-    const user = await User.findById(req.user.userId)
-      .select('-password');
-    
+    const user = await User.findById(req.user.userId).select('-password');
     if (!user) {
       return res.status(404).json({ message: 'User not found' });
     }
@@ -430,7 +396,6 @@ app.get('/api/user/profile', authenticateToken, async (req, res) => {
       followingCount
     });
   } catch (error) {
-    console.error('Profile error:', error);
     res.status(500).json({ message: 'Server error' });
   }
 });
@@ -471,7 +436,6 @@ app.post('/api/user/follow/:userId', authenticateToken, async (req, res) => {
       res.json({ message: 'Followed successfully', following: true });
     }
   } catch (error) {
-    console.error('Follow error:', error);
     res.status(500).json({ message: 'Server error' });
   }
 });
@@ -486,37 +450,28 @@ app.get('/api/projects', async (req, res) => {
     
     res.json(projects);
   } catch (error) {
-    console.error('Projects error:', error);
     res.status(500).json({ message: 'Server error fetching projects' });
   }
 });
 
-app.post('/api/projects', authenticateToken, upload.single('screenshot'), async (req, res) => {
+app.post('/api/projects', authenticateToken, async (req, res) => {
   try {
     const { title, description, githubLink, liveLink, tags } = req.body;
     
-    if (!title) {
-      return res.status(400).json({ message: 'Project title is required' });
-    }
-
     const project = new Project({
       title,
       description,
       githubLink,
       liveLink,
       tags: tags ? tags.split(',').map(tag => tag.trim()) : [],
-      screenshot: req.file ? `/uploads/${req.file.filename}` : null,
       author: req.user.userId
     });
 
     await project.save();
-
-    // Update user's project count
     await User.findByIdAndUpdate(req.user.userId, { $inc: { projectsCount: 1 } });
 
     res.status(201).json(project);
   } catch (error) {
-    console.error('Create project error:', error);
     res.status(500).json({ message: 'Server error creating project' });
   }
 });
@@ -525,10 +480,6 @@ app.post('/api/projects', authenticateToken, upload.single('screenshot'), async 
 app.post('/api/ai/generate-code', authenticateToken, async (req, res) => {
   try {
     const { prompt } = req.body;
-
-    if (!prompt) {
-      return res.status(400).json({ message: 'Prompt is required' });
-    }
 
     if (!openai) {
       return res.json({ 
@@ -541,7 +492,7 @@ app.post('/api/ai/generate-code', authenticateToken, async (req, res) => {
       messages: [
         {
           role: "system",
-          content: "You are an expert programming assistant. Generate clean, efficient, and well-commented code based on the user's request. Always return only the code without additional explanations unless specifically asked."
+          content: "You are an expert programming assistant. Generate clean, efficient, and well-commented code based on the user's request."
         },
         {
           role: "user",
@@ -554,40 +505,7 @@ app.post('/api/ai/generate-code', authenticateToken, async (req, res) => {
     const code = completion.choices[0].message.content;
     res.json({ code });
   } catch (error) {
-    console.error('AI error:', error);
     res.status(500).json({ message: 'Error generating code with AI' });
-  }
-});
-
-// Voice Chat AI Route
-app.post('/api/ai/voice-chat', authenticateToken, async (req, res) => {
-  try {
-    const { message } = req.body;
-
-    if (!openai) {
-      return res.json({ response: "AI voice chat is currently unavailable. Please try again later." });
-    }
-
-    const completion = await openai.chat.completions.create({
-      model: "gpt-3.5-turbo",
-      messages: [
-        {
-          role: "system",
-          content: "You are a helpful coding assistant. Provide clear, concise answers suitable for voice responses."
-        },
-        {
-          role: "user",
-          content: message
-        }
-      ],
-      max_tokens: 500
-    });
-
-    const response = completion.choices[0].message.content;
-    res.json({ response });
-  } catch (error) {
-    console.error('Voice AI error:', error);
-    res.status(500).json({ message: 'Error processing voice chat' });
   }
 });
 
@@ -600,7 +518,6 @@ app.get('/api/apis', async (req, res) => {
     
     res.json(apis);
   } catch (error) {
-    console.error('APIs error:', error);
     res.status(500).json({ message: 'Server error fetching APIs' });
   }
 });
@@ -609,10 +526,6 @@ app.post('/api/apis', authenticateToken, async (req, res) => {
   try {
     const { name, endpoint, description, category } = req.body;
     
-    if (!name || !endpoint) {
-      return res.status(400).json({ message: 'API name and endpoint are required' });
-    }
-
     const api = new API({
       name,
       endpoint,
@@ -624,35 +537,7 @@ app.post('/api/apis', authenticateToken, async (req, res) => {
     await api.save();
     res.status(201).json(api);
   } catch (error) {
-    console.error('Create API error:', error);
     res.status(500).json({ message: 'Server error creating API' });
-  }
-});
-
-// API Testing Playground
-app.post('/api/apis/test', authenticateToken, async (req, res) => {
-  try {
-    const { endpoint, method, headers, body } = req.body;
-    
-    if (!endpoint) {
-      return res.status(400).json({ message: 'Endpoint is required' });
-    }
-
-    // Simple fetch to test the endpoint
-    const response = await fetch(endpoint, {
-      method: method || 'GET',
-      headers: headers || {},
-      body: body ? JSON.stringify(body) : undefined
-    });
-
-    const data = await response.json();
-    res.json({
-      status: response.status,
-      data: data
-    });
-  } catch (error) {
-    console.error('API test error:', error);
-    res.status(500).json({ message: 'Error testing API endpoint' });
   }
 });
 
@@ -662,21 +547,7 @@ app.get('/api/lessons', async (req, res) => {
     const lessons = await Lesson.find().sort({ order: 1 });
     res.json(lessons);
   } catch (error) {
-    console.error('Lessons error:', error);
     res.status(500).json({ message: 'Server error fetching lessons' });
-  }
-});
-
-app.post('/api/lessons/complete/:lessonId', authenticateToken, async (req, res) => {
-  try {
-    await Lesson.findByIdAndUpdate(req.params.lessonId, {
-      $addToSet: { completedBy: req.user.userId }
-    });
-    
-    res.json({ message: 'Lesson marked as completed' });
-  } catch (error) {
-    console.error('Complete lesson error:', error);
-    res.status(500).json({ message: 'Server error completing lesson' });
   }
 });
 
@@ -689,21 +560,7 @@ app.get('/api/hackathons', async (req, res) => {
     
     res.json(hackathons);
   } catch (error) {
-    console.error('Hackathons error:', error);
     res.status(500).json({ message: 'Server error fetching hackathons' });
-  }
-});
-
-app.post('/api/hackathons/join/:hackathonId', authenticateToken, async (req, res) => {
-  try {
-    await Hackathon.findByIdAndUpdate(req.params.hackathonId, {
-      $addToSet: { participants: req.user.userId }
-    });
-    
-    res.json({ message: 'Joined hackathon successfully' });
-  } catch (error) {
-    console.error('Join hackathon error:', error);
-    res.status(500).json({ message: 'Server error joining hackathon' });
   }
 });
 
@@ -718,41 +575,29 @@ app.get('/api/notifications', authenticateToken, async (req, res) => {
     
     res.json(notifications);
   } catch (error) {
-    console.error('Notifications error:', error);
     res.status(500).json({ message: 'Server error fetching notifications' });
   }
 });
 
-app.put('/api/notifications/read/:notificationId', authenticateToken, async (req, res) => {
-  try {
-    await Notification.findByIdAndUpdate(req.params.notificationId, {
-      isRead: true
-    });
-    
-    res.json({ message: 'Notification marked as read' });
-  } catch (error) {
-    console.error('Mark notification read error:', error);
-    res.status(500).json({ message: 'Server error updating notification' });
-  }
-});
-
-// Admin Routes
+// Admin Routes - FIXED
 app.get('/api/admin/users', authenticateToken, adminAuth, async (req, res) => {
   try {
     const users = await User.find().select('-password').sort({ createdAt: -1 });
     res.json(users);
   } catch (error) {
-    console.error('Admin users error:', error);
     res.status(500).json({ message: 'Server error fetching users' });
   }
 });
 
 app.put('/api/admin/users/:userId/verify', authenticateToken, adminAuth, async (req, res) => {
   try {
-    await User.findByIdAndUpdate(req.params.userId, { isVerified: true });
-    res.json({ message: 'User verified successfully' });
+    const user = await User.findByIdAndUpdate(
+      req.params.userId, 
+      { isVerified: true },
+      { new: true }
+    );
+    res.json({ message: 'User verified successfully', user });
   } catch (error) {
-    console.error('Verify user error:', error);
     res.status(500).json({ message: 'Server error verifying user' });
   }
 });
@@ -762,22 +607,42 @@ app.get('/api/admin/apis/pending', authenticateToken, adminAuth, async (req, res
     const apis = await API.find({ isApproved: false }).populate('owner', 'name');
     res.json(apis);
   } catch (error) {
-    console.error('Pending APIs error:', error);
     res.status(500).json({ message: 'Server error fetching pending APIs' });
   }
 });
 
 app.put('/api/admin/apis/:apiId/approve', authenticateToken, adminAuth, async (req, res) => {
   try {
-    await API.findByIdAndUpdate(req.params.apiId, { isApproved: true });
-    res.json({ message: 'API approved successfully' });
+    const api = await API.findByIdAndUpdate(
+      req.params.apiId, 
+      { isApproved: true },
+      { new: true }
+    );
+    res.json({ message: 'API approved successfully', api });
   } catch (error) {
-    console.error('Approve API error:', error);
     res.status(500).json({ message: 'Server error approving API' });
   }
 });
 
-// Health check route
+app.get('/api/admin/stats', authenticateToken, adminAuth, async (req, res) => {
+  try {
+    const usersCount = await User.countDocuments();
+    const projectsCount = await Project.countDocuments();
+    const apisCount = await API.countDocuments();
+    const hackathonsCount = await Hackathon.countDocuments();
+    
+    res.json({
+      usersCount,
+      projectsCount,
+      apisCount,
+      hackathonsCount
+    });
+  } catch (error) {
+    res.status(500).json({ message: 'Server error fetching stats' });
+  }
+});
+
+// Health check
 app.get('/api/health', (req, res) => {
   res.json({ 
     status: 'OK', 
@@ -786,20 +651,14 @@ app.get('/api/health', (req, res) => {
   });
 });
 
-// Socket.IO for real-time chat
+// Socket.IO
 const onlineUsers = new Map();
 
 io.on('connection', (socket) => {
   console.log('User connected:', socket.id);
 
   socket.on('user_online', (userData) => {
-    onlineUsers.set(socket.id, {
-      socketId: socket.id,
-      userId: userData.id,
-      name: userData.name,
-      avatar: userData.avatar
-    });
-    
+    onlineUsers.set(socket.id, userData);
     io.emit('online_users', Array.from(onlineUsers.values()));
   });
 
@@ -812,18 +671,8 @@ io.on('connection', (socket) => {
     });
   });
 
-  socket.on('leave_room', (room) => {
-    socket.leave(room);
-    const user = onlineUsers.get(socket.id);
-    socket.to(room).emit('user_left', {
-      username: user?.name || 'Anonymous',
-      room
-    });
-  });
-
   socket.on('send_message', async (data) => {
     try {
-      // Save message to database
       const message = new Message({
         room: data.room,
         user: data.user.id,
@@ -831,10 +680,7 @@ io.on('connection', (socket) => {
       });
       await message.save();
 
-      // Populate user data for the message
       const populatedMessage = await Message.findById(message._id).populate('user', 'name avatar');
-
-      // Broadcast to room
       io.to(data.room).emit('chat_message', {
         user: populatedMessage.user,
         message: populatedMessage.message,
@@ -852,7 +698,7 @@ io.on('connection', (socket) => {
   });
 });
 
-// Create initial admin user - FIXED
+// Create initial admin user
 async function createAdminUser() {
   try {
     const adminExists = await User.findOne({ email: 'admin@devsarena.com' });
@@ -869,21 +715,9 @@ async function createAdminUser() {
       });
       await adminUser.save();
       console.log('✅ Admin user created');
-    } else {
-      console.log('ℹ️ Admin user already exists');
     }
   } catch (error) {
     console.error('Error creating admin user:', error);
-    // If it's a duplicate key error, try to fix it
-    if (error.code === 11000) {
-      try {
-        // Drop the problematic index
-        await mongoose.connection.collection('users').dropIndex('username_1');
-        console.log('✅ Problematic username index dropped');
-      } catch (dropError) {
-        console.log('ℹ️ Could not drop index, might already be dropped');
-      }
-    }
   }
 }
 
@@ -893,11 +727,30 @@ async function createSampleData() {
     const lessonCount = await Lesson.countDocuments();
     if (lessonCount === 0) {
       const lessons = [
-        { title: 'HTML Basics', content: 'Learn the fundamentals of HTML...', category: 'frontend', level: 'beginner', duration: 30, order: 1 },
-        { title: 'CSS Styling', content: 'Master CSS for beautiful websites...', category: 'frontend', level: 'beginner', duration: 45, order: 2 },
-        { title: 'JavaScript Fundamentals', content: 'Learn JavaScript programming...', category: 'frontend', level: 'beginner', duration: 60, order: 3 },
-        { title: 'Node.js Introduction', content: 'Server-side JavaScript with Node.js...', category: 'backend', level: 'intermediate', duration: 50, order: 4 },
-        { title: 'API Development', content: 'Build RESTful APIs...', category: 'backend', level: 'intermediate', duration: 55, order: 5 }
+        { 
+          title: 'HTML Basics', 
+          content: 'Learn the fundamentals of HTML structure, tags, and semantic markup. Build your first web page with proper HTML5 standards.', 
+          category: 'frontend', 
+          level: 'beginner', 
+          duration: 30, 
+          order: 1 
+        },
+        { 
+          title: 'CSS Styling', 
+          content: 'Master CSS for beautiful websites. Learn flexbox, grid, animations, and responsive design principles.', 
+          category: 'frontend', 
+          level: 'beginner', 
+          duration: 45, 
+          order: 2 
+        },
+        { 
+          title: 'JavaScript Fundamentals', 
+          content: 'Learn JavaScript programming from variables to functions. Understand ES6+ features and modern JavaScript patterns.', 
+          category: 'frontend', 
+          level: 'beginner', 
+          duration: 60, 
+          order: 3 
+        }
       ];
       await Lesson.insertMany(lessons);
       console.log('✅ Sample lessons created');
@@ -906,28 +759,48 @@ async function createSampleData() {
     const apiCount = await API.countDocuments();
     if (apiCount === 0) {
       const sampleAPIs = [
-        { name: 'JSONPlaceholder', endpoint: 'https://jsonplaceholder.typicode.com/posts', description: 'Fake API for testing', category: 'development', isApproved: true },
-        { name: 'OpenWeatherMap', endpoint: 'https://api.openweathermap.org/data/2.5/weather', description: 'Weather data API', category: 'weather', isApproved: true }
+        { 
+          name: 'JSONPlaceholder', 
+          endpoint: 'https://jsonplaceholder.typicode.com/posts', 
+          description: 'Fake REST API for testing and prototyping', 
+          category: 'development', 
+          isApproved: true 
+        },
+        { 
+          name: 'OpenWeatherMap', 
+          endpoint: 'https://api.openweathermap.org/data/2.5/weather', 
+          description: 'Current weather data for any location', 
+          category: 'weather', 
+          isApproved: true 
+        }
       ];
       await API.insertMany(sampleAPIs);
       console.log('✅ Sample APIs created');
+    }
+
+    const hackathonCount = await Hackathon.countDocuments();
+    if (hackathonCount === 0) {
+      const hackathons = [
+        {
+          title: 'Spring 2024 Coding Challenge',
+          description: 'Build innovative web applications using modern technologies. Showcase your skills and win amazing prizes!',
+          startDate: new Date('2024-03-01'),
+          endDate: new Date('2024-03-31'),
+          prizes: ['$5000 Cash Prize', 'Premium Laptop', 'Devs Arena Pro Membership'],
+          isActive: true
+        }
+      ];
+      await Hackathon.insertMany(hackathons);
+      console.log('✅ Sample hackathons created');
     }
   } catch (error) {
     console.error('Error creating sample data:', error);
   }
 }
 
-// Serve static files
-app.use('/uploads', express.static('uploads'));
-
 const PORT = process.env.PORT || 5000;
 server.listen(PORT, async () => {
   console.log(`🚀 DEVS ARENA server running on port ${PORT}`);
-  console.log(`🌐 Environment: ${process.env.NODE_ENV || 'development'}`);
-  
-  // Wait a bit for MongoDB to be ready
-  setTimeout(async () => {
-    await createAdminUser();
-    await createSampleData();
-  }, 2000);
+  await createAdminUser();
+  await createSampleData();
 });
