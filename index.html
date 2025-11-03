@@ -1,2097 +1,959 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" class="h-full">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>DEVS ARENA - Ultimate Developer Ecosystem</title>
+    <title>DEVS ARENA - Real-Time Developer Platform</title>
+    <meta name="description" content="All-in-one developer ecosystem for learning, collaboration, and real-time coding">
     <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/dompurify@3.0.5/dist/purify.min.js"></script>
-    <script src="/socket.io/socket.io.js"></script>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/codemirror.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism-tomorrow.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.7.4/socket.io.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/codemirror.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/javascript/javascript.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/xml/xml.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/css/css.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    screens: {
+                        '4k': '2560px'
+                    },
+                    colors: {
+                        primary: '#2563eb',
+                        dark: {
+                            bg: '#1a1a1a',
+                            card: '#2d2d2d'
+                        }
+                    }
+                }
+            },
+            darkMode: 'class'
+        }
+    </script>
     <style>
-        :root {
-            --neon-blue: #00f3ff;
-            --dark-bg: #0a0a0f;
-            --glass-bg: rgba(255, 255, 255, 0.05);
-            --glass-border: rgba(255, 255, 255, 0.1);
-            --primary-gradient: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            --secondary-gradient: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
-        }
-        
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-        
-        body {
-            background: linear-gradient(135deg, var(--dark-bg) 0%, #1a1a2e 50%, #16213e 100%);
-            min-height: 100vh;
-            color: white;
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            overflow-x: hidden;
-        }
-        
-        .glass {
-            background: var(--glass-bg);
-            backdrop-filter: blur(20px);
-            border: 1px solid var(--glass-border);
-            border-radius: 12px;
-        }
-        
-        .glass-dark {
-            background: rgba(0, 0, 0, 0.3);
-            backdrop-filter: blur(20px);
-            border: 1px solid rgba(255, 255, 255, 0.1);
-            border-radius: 12px;
-        }
-        
-        .neon-glow {
-            box-shadow: 0 0 20px rgba(0, 243, 255, 0.3);
-        }
-        
-        .neon-text {
-            text-shadow: 0 0 10px var(--neon-blue);
-        }
-        
-        .gradient-text {
-            background: linear-gradient(45deg, var(--neon-blue), #0099ff);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            background-clip: text;
-        }
-        
-        .gradient-bg {
-            background: var(--primary-gradient);
-        }
-        
-        .code-editor {
-            background: #1e1e1e;
-            border-radius: 8px;
-            font-family: 'Courier New', monospace;
-        }
-        
-        .nav-link {
-            position: relative;
-            transition: all 0.3s ease;
-        }
-        
-        .nav-link:hover {
-            color: var(--neon-blue);
-        }
-        
-        .nav-link.active {
-            color: var(--neon-blue);
-        }
-        
-        .nav-link.active::after {
-            content: '';
-            position: absolute;
-            bottom: -5px;
-            left: 0;
-            width: 100%;
-            height: 2px;
-            background: var(--neon-blue);
-            border-radius: 2px;
-        }
-        
-        .mobile-nav {
-            transform: translateX(-100%);
-            transition: transform 0.3s ease;
-        }
-        
-        .mobile-nav.open {
-            transform: translateX(0);
-        }
-        
-        .section {
-            display: none;
-            animation: fadeIn 0.5s ease;
-        }
-        
-        .section.active {
-            display: block;
-        }
-        
-        @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(20px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
-        
-        .btn-primary {
-            background: var(--primary-gradient);
-            transition: all 0.3s ease;
-        }
-        
-        .btn-primary:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.2);
-        }
-        
-        .card-hover {
-            transition: all 0.3s ease;
-        }
-        
-        .card-hover:hover {
-            transform: translateY(-5px);
-            box-shadow: 0 15px 30px rgba(0, 0, 0, 0.3);
-        }
-        
-        .progress-bar {
-            background: rgba(255, 255, 255, 0.1);
-            border-radius: 10px;
-            overflow: hidden;
-        }
-        
-        .progress-fill {
-            height: 8px;
-            background: var(--primary-gradient);
-            border-radius: 10px;
-            transition: width 0.5s ease;
-        }
-        
-        .channel-active {
-            background: rgba(0, 243, 255, 0.1);
-            border-left: 3px solid var(--neon-blue);
-        }
-        
-        .message-self {
-            background: rgba(0, 243, 255, 0.1);
-            border-left: 3px solid var(--neon-blue);
-        }
-        
-        .message-other {
-            background: rgba(255, 255, 255, 0.05);
-        }
-        
-        .tab-active {
-            background: rgba(0, 243, 255, 0.1);
-            border-bottom: 2px solid var(--neon-blue);
-        }
+        .cm-editor { height: 300px; border: 1px solid #e5e7eb; border-radius: 0.5rem; }
+        .dark .cm-editor { border-color: #4b5563; }
+        .progress-bar { transition: width 0.5s ease-in-out; }
+        .fade-in { animation: fadeIn 0.5s ease-in; }
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+        .message-enter { animation: slideIn 0.3s ease-out; }
+        @keyframes slideIn { from { transform: translateX(-100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
     </style>
 </head>
-<body class="min-h-screen">
-    <!-- Navigation Bar -->
-    <nav class="glass-dark fixed top-0 left-0 right-0 z-50">
-        <div class="container mx-auto px-4">
-            <div class="flex items-center justify-between h-16">
-                <!-- Logo -->
+<body class="h-full bg-gray-50 dark:bg-dark-bg transition-colors duration-300">
+    <!-- Navigation -->
+    <nav class="bg-primary text-white shadow-lg sticky top-0 z-50">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between h-16">
+                <div class="flex items-center">
+                    <div class="flex-shrink-0 flex items-center">
+                        <h1 class="text-xl font-bold">DEVS ARENA</h1>
+                    </div>
+                    <div class="hidden md:ml-6 md:flex md:space-x-4">
+                        <a href="#home" class="nav-link px-3 py-2 rounded-md text-sm font-medium hover:bg-blue-700 transition">Home</a>
+                        <a href="#learn" class="nav-link px-3 py-2 rounded-md text-sm font-medium hover:bg-blue-700 transition">Learn</a>
+                        <a href="#projects" class="nav-link px-3 py-2 rounded-md text-sm font-medium hover:bg-blue-700 transition">Projects</a>
+                        <a href="#apis" class="nav-link px-3 py-2 rounded-md text-sm font-medium hover:bg-blue-700 transition">Free APIs</a>
+                        <a href="#chat" class="nav-link px-3 py-2 rounded-md text-sm font-medium hover:bg-blue-700 transition">Chat</a>
+                        <a href="#jobs" class="nav-link px-3 py-2 rounded-md text-sm font-medium hover:bg-blue-700 transition">Jobs</a>
+                    </div>
+                </div>
                 <div class="flex items-center space-x-4">
-                    <button id="mobileMenuBtn" class="md:hidden text-xl text-gray-300 hover:text-white">
-                        <i class="fas fa-bars"></i>
+                    <button id="themeToggle" class="p-2 rounded-full hover:bg-blue-700 transition">
+                        <svg class="w-5 h-5 hidden dark:block" fill="currentColor" viewBox="0 0 20 20"><path d="M10 2a1 1 0 011 1v1a1 1 0 11-2 0V3a1 1 0 011-1zm4 8a4 4 0 11-8 0 4 4 0 018 0zm-.464 4.95l.707.707a1 1 0 001.414-1.414l-.707-.707a1 1 0 00-1.414 1.414zm2.12-10.607a1 1 0 010 1.414l-.706.707a1 1 0 11-1.414-1.414l.707-.707a1 1 0 011.414 0zM17 11a1 1 0 100-2h-1a1 1 0 100 2h1zm-7 4a1 1 0 011 1v1a1 1 0 11-2 0v-1a1 1 0 011-1zM5.05 6.464A1 1 0 106.465 5.05l-.708-.707a1 1 0 00-1.414 1.414l.707.707zm1.414 8.486l-.707.707a1 1 0 01-1.414-1.414l.707-.707a1 1 0 011.414 1.414zM4 11a1 1 0 100-2H3a1 1 0 000 2h1z"></path></svg>
+                        <svg class="w-5 h-5 dark:hidden" fill="currentColor" viewBox="0 0 20 20"><path d="M17.293 13.293A8 8 0 016.707 2.707a8.001 8.001 0 1010.586 10.586z"></path></svg>
                     </button>
-                    <div class="flex items-center space-x-3">
-                        <div class="w-10 h-10 gradient-bg rounded-lg flex items-center justify-center">
-                            <i class="fas fa-code text-white"></i>
-                        </div>
-                        <span class="text-xl font-bold gradient-text">DEVS ARENA</span>
+                    <button id="aiAssistantBtn" class="bg-green-600 hover:bg-green-700 px-4 py-2 rounded-md text-sm font-medium transition">AI Assistant</button>
+                    <div id="authSection" class="flex space-x-2">
+                        <button id="loginBtn" class="bg-white text-primary hover:bg-gray-100 px-4 py-2 rounded-md text-sm font-medium transition">Login</button>
+                        <button id="registerBtn" class="bg-blue-700 hover:bg-blue-800 px-4 py-2 rounded-md text-sm font-medium transition">Register</button>
                     </div>
-                </div>
-
-                <!-- Desktop Nav Links -->
-                <div class="hidden md:flex items-center space-x-1">
-                    <a href="#home" class="nav-link px-4 py-2 rounded-lg transition-all active">Home</a>
-                    <a href="#learn" class="nav-link px-4 py-2 rounded-lg transition-all">Learn</a>
-                    <a href="#projects" class="nav-link px-4 py-2 rounded-lg transition-all">Projects</a>
-                    <a href="#api" class="nav-link px-4 py-2 rounded-lg transition-all">API Hub</a>
-                    <a href="#tools" class="nav-link px-4 py-2 rounded-lg transition-all">Tools</a>
-                    <a href="#ai" class="nav-link px-4 py-2 rounded-lg transition-all">AI Copilot</a>
-                    <a href="#chat" class="nav-link px-4 py-2 rounded-lg transition-all">Chat</a>
-                    <a href="#hackathons" class="nav-link px-4 py-2 rounded-lg transition-all">Hackathons</a>
-                    <a href="#dashboard" class="nav-link px-4 py-2 rounded-lg transition-all">Dashboard</a>
-                    <a href="#admin" class="nav-link px-4 py-2 rounded-lg transition-all hidden" id="adminNav">Admin</a>
-                </div>
-
-                <!-- Search Bar -->
-                <div class="hidden lg:block flex-1 max-w-md mx-8">
-                    <div class="relative">
-                        <input 
-                            type="text" 
-                            id="globalSearch"
-                            placeholder="Search lessons, users, projects..."
-                            class="w-full glass rounded-full pl-10 pr-4 py-2 text-white placeholder-gray-400 focus:outline-none focus:neon-glow"
-                        >
-                        <div class="absolute left-3 top-2.5 text-gray-400">
-                            <i class="fas fa-search"></i>
-                        </div>
+                    <div id="userSection" class="hidden items-center space-x-2">
+                        <span id="userName" class="text-sm"></span>
+                        <button id="profileBtn" class="bg-blue-700 hover:bg-blue-800 px-4 py-2 rounded-md text-sm font-medium transition">Profile</button>
+                        <button id="logoutBtn" class="bg-red-600 hover:bg-red-700 px-4 py-2 rounded-md text-sm font-medium transition">Logout</button>
                     </div>
-                </div>
-
-                <!-- Auth Buttons -->
-                <div class="flex items-center space-x-3" id="authSection">
-                    <button id="loginBtn" class="glass px-4 py-2 rounded-lg hover:neon-glow transition-all">
-                        <i class="fas fa-sign-in-alt mr-2"></i>Login
-                    </button>
-                    <button id="registerBtn" class="btn-primary px-4 py-2 rounded-lg text-white">
-                        <i class="fas fa-user-plus mr-2"></i>Register
-                    </button>
                 </div>
             </div>
         </div>
     </nav>
 
-    <!-- Mobile Navigation -->
-    <div id="mobileNav" class="mobile-nav fixed inset-0 z-40 bg-black bg-opacity-90 md:hidden">
-        <div class="flex flex-col h-full w-64 glass-dark p-6">
-            <div class="flex justify-between items-center mb-8">
-                <div class="flex items-center space-x-3">
-                    <div class="w-8 h-8 gradient-bg rounded-lg flex items-center justify-center">
-                        <i class="fas fa-code text-white text-sm"></i>
-                    </div>
-                    <span class="text-lg font-bold gradient-text">DEVS ARENA</span>
-                </div>
-                <button id="closeMobileMenu" class="text-gray-400 hover:text-white">
-                    <i class="fas fa-times"></i>
-                </button>
-            </div>
-            
-            <div class="flex-1 space-y-4">
-                <a href="#home" class="nav-link block p-3 rounded-lg transition-all active">
-                    <i class="fas fa-home mr-3"></i>Home
-                </a>
-                <a href="#learn" class="nav-link block p-3 rounded-lg transition-all">
-                    <i class="fas fa-graduation-cap mr-3"></i>Learn
-                </a>
-                <a href="#projects" class="nav-link block p-3 rounded-lg transition-all">
-                    <i class="fas fa-project-diagram mr-3"></i>Projects
-                </a>
-                <a href="#api" class="nav-link block p-3 rounded-lg transition-all">
-                    <i class="fas fa-plug mr-3"></i>API Hub
-                </a>
-                <a href="#tools" class="nav-link block p-3 rounded-lg transition-all">
-                    <i class="fas fa-tools mr-3"></i>Tools
-                </a>
-                <a href="#ai" class="nav-link block p-3 rounded-lg transition-all">
-                    <i class="fas fa-robot mr-3"></i>AI Copilot
-                </a>
-                <a href="#chat" class="nav-link block p-3 rounded-lg transition-all">
-                    <i class="fas fa-comments mr-3"></i>Chat
-                </a>
-                <a href="#hackathons" class="nav-link block p-3 rounded-lg transition-all">
-                    <i class="fas fa-trophy mr-3"></i>Hackathons
-                </a>
-                <a href="#dashboard" class="nav-link block p-3 rounded-lg transition-all">
-                    <i class="fas fa-chart-line mr-3"></i>Dashboard
-                </a>
-                <a href="#admin" class="nav-link block p-3 rounded-lg transition-all hidden" id="mobileAdminNav">
-                    <i class="fas fa-shield-alt mr-3"></i>Admin
-                </a>
-            </div>
-            
-            <div class="pt-6 border-t border-gray-700">
-                <div class="flex space-x-3">
-                    <button id="mobileLoginBtn" class="flex-1 glass px-4 py-2 rounded-lg text-center">
-                        Login
-                    </button>
-                    <button id="mobileRegisterBtn" class="flex-1 btn-primary px-4 py-2 rounded-lg text-center text-white">
-                        Register
-                    </button>
-                </div>
-            </div>
+    <!-- Mobile Menu -->
+    <div id="mobileMenu" class="md:hidden bg-primary text-white hidden">
+        <div class="px-2 pt-2 pb-3 space-y-1">
+            <a href="#home" class="nav-link block px-3 py-2 rounded-md text-base font-medium hover:bg-blue-700 transition">Home</a>
+            <a href="#learn" class="nav-link block px-3 py-2 rounded-md text-base font-medium hover:bg-blue-700 transition">Learn</a>
+            <a href="#projects" class="nav-link block px-3 py-2 rounded-md text-base font-medium hover:bg-blue-700 transition">Projects</a>
+            <a href="#apis" class="nav-link block px-3 py-2 rounded-md text-base font-medium hover:bg-blue-700 transition">Free APIs</a>
+            <a href="#chat" class="nav-link block px-3 py-2 rounded-md text-base font-medium hover:bg-blue-700 transition">Chat</a>
+            <a href="#jobs" class="nav-link block px-3 py-2 rounded-md text-base font-medium hover:bg-blue-700 transition">Jobs</a>
         </div>
     </div>
 
     <!-- Main Content -->
-    <main class="pt-20">
+    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <!-- Home Section -->
-        <section id="home" class="section active min-h-screen flex items-center justify-center py-12">
-            <div class="container mx-auto px-4">
-                <div class="text-center glass p-12 rounded-3xl max-w-5xl mx-auto">
-                    <h1 class="text-5xl md:text-7xl font-bold mb-6 gradient-text">DEVS ARENA</h1>
-                    <p class="text-xl md:text-2xl mb-8 text-gray-300 max-w-3xl mx-auto">
-                        The Ultimate Professional Developer Ecosystem - Learn, Build, Collaborate, and Innovate in One Platform
-                    </p>
-                    <div class="flex flex-wrap justify-center gap-4 mt-8">
-                        <button class="btn-primary px-8 py-3 rounded-lg text-white font-semibold">
-                            <i class="fas fa-rocket mr-2"></i>Get Started
-                        </button>
-                        <button class="glass px-8 py-3 rounded-lg font-semibold hover:neon-glow">
-                            <i class="fas fa-play-circle mr-2"></i>Watch Demo
-                        </button>
+        <section id="home" class="fade-in">
+            <div class="text-center mb-12">
+                <h2 class="text-4xl font-bold text-gray-900 dark:text-white mb-4">Welcome to DEVS ARENA</h2>
+                <p class="text-xl text-gray-600 dark:text-gray-300 mb-8">The ultimate platform for developers to learn, collaborate, and build together</p>
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-8 mb-12">
+                    <div class="bg-white dark:bg-dark-card p-6 rounded-lg shadow-lg">
+                        <h3 class="text-2xl font-bold text-primary mb-4">Learn & Grow</h3>
+                        <p class="text-gray-600 dark:text-gray-300">Interactive coding lessons from beginner to advanced levels</p>
                     </div>
-                    
-                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mt-16">
-                        <div class="glass p-6 rounded-xl card-hover">
-                            <div class="text-3xl mb-4 text-cyan-400">
-                                <i class="fas fa-graduation-cap"></i>
-                            </div>
-                            <h3 class="font-semibold mb-2 text-lg">Interactive Learning</h3>
-                            <p class="text-sm text-gray-400">Master coding with hands-on lessons and real-time feedback</p>
-                        </div>
-                        <div class="glass p-6 rounded-xl card-hover">
-                            <div class="text-3xl mb-4 text-purple-400">
-                                <i class="fas fa-code-branch"></i>
-                            </div>
-                            <h3 class="font-semibold mb-2 text-lg">Project Collaboration</h3>
-                            <p class="text-sm text-gray-400">Build real projects with team members across the globe</p>
-                        </div>
-                        <div class="glass p-6 rounded-xl card-hover">
-                            <div class="text-3xl mb-4 text-green-400">
-                                <i class="fas fa-robot"></i>
-                            </div>
-                            <h3 class="font-semibold mb-2 text-lg">AI Assistant</h3>
-                            <p class="text-sm text-gray-400">Get intelligent code suggestions and explanations</p>
-                        </div>
-                        <div class="glass p-6 rounded-xl card-hover">
-                            <div class="text-3xl mb-4 text-yellow-400">
-                                <i class="fas fa-users"></i>
-                            </div>
-                            <h3 class="font-semibold mb-2 text-lg">Global Community</h3>
-                            <p class="text-sm text-gray-400">Connect with developers worldwide in real-time chat</p>
-                        </div>
+                    <div class="bg-white dark:bg-dark-card p-6 rounded-lg shadow-lg">
+                        <h3 class="text-2xl font-bold text-primary mb-4">Collaborate</h3>
+                        <p class="text-gray-600 dark:text-gray-300">Real-time chat, project sharing, and team collaboration</p>
+                    </div>
+                    <div class="bg-white dark:bg-dark-card p-6 rounded-lg shadow-lg">
+                        <h3 class="text-2xl font-bold text-primary mb-4">Build & Deploy</h3>
+                        <p class="text-gray-600 dark:text-gray-300">Access free APIs, AI assistance, and deployment tools</p>
                     </div>
                 </div>
-                
-                <!-- Stats Section -->
-                <div class="glass p-8 rounded-3xl max-w-5xl mx-auto mt-12">
-                    <div class="grid grid-cols-2 md:grid-cols-4 gap-6 text-center">
-                        <div>
-                            <div class="text-3xl font-bold gradient-text" id="statsUsers">10K+</div>
-                            <div class="text-gray-400">Active Developers</div>
-                        </div>
-                        <div>
-                            <div class="text-3xl font-bold gradient-text" id="statsProjects">500+</div>
-                            <div class="text-gray-400">Projects Shared</div>
-                        </div>
-                        <div>
-                            <div class="text-3xl font-bold gradient-text" id="statsLessons">200+</div>
-                            <div class="text-gray-400">Learning Modules</div>
-                        </div>
-                        <div>
-                            <div class="text-3xl font-bold gradient-text" id="statsHackathons">50+</div>
-                            <div class="text-gray-400">Hackathons Hosted</div>
-                        </div>
-                    </div>
+            </div>
+
+            <!-- Stats -->
+            <div id="stats" class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-12">
+                <div class="bg-white dark:bg-dark-card p-4 rounded-lg shadow text-center">
+                    <div class="text-2xl font-bold text-primary" id="usersCount">0</div>
+                    <div class="text-gray-600 dark:text-gray-300">Developers</div>
+                </div>
+                <div class="bg-white dark:bg-dark-card p-4 rounded-lg shadow text-center">
+                    <div class="text-2xl font-bold text-primary" id="projectsCount">0</div>
+                    <div class="text-gray-600 dark:text-gray-300">Projects</div>
+                </div>
+                <div class="bg-white dark:bg-dark-card p-4 rounded-lg shadow text-center">
+                    <div class="text-2xl font-bold text-primary" id="apisCount">0</div>
+                    <div class="text-gray-600 dark:text-gray-300">APIs</div>
+                </div>
+                <div class="bg-white dark:bg-dark-card p-4 rounded-lg shadow text-center">
+                    <div class="text-2xl font-bold text-primary" id="jobsCount">0</div>
+                    <div class="text-gray-600 dark:text-gray-300">Jobs</div>
                 </div>
             </div>
         </section>
 
-        <!-- Learning Section -->
-        <section id="learn" class="section min-h-screen py-20">
-            <div class="container mx-auto px-4">
-                <div class="glass p-8 rounded-3xl">
-                    <h2 class="text-4xl font-bold mb-8 gradient-text text-center">Devs School</h2>
-                    <p class="text-center text-gray-300 mb-12 max-w-2xl mx-auto">
-                        Master in-demand technologies with our interactive learning platform. Practice coding directly in your browser with instant feedback.
-                    </p>
-                    
-                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8" id="coursesGrid">
-                        <!-- Courses will be loaded here -->
+        <!-- Learn Section -->
+        <section id="learn" class="fade-in hidden">
+            <h2 class="text-3xl font-bold text-gray-900 dark:text-white mb-8">Learning Hub</h2>
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
+                <div class="lesson-card bg-white dark:bg-dark-card p-6 rounded-lg shadow-lg cursor-pointer hover:shadow-xl transition" data-lesson="html">
+                    <h3 class="text-xl font-bold text-primary mb-2">HTML Basics</h3>
+                    <p class="text-gray-600 dark:text-gray-300 mb-4">Learn the foundation of web development</p>
+                    <div class="progress-bar bg-gray-200 dark:bg-gray-700 rounded-full h-2">
+                        <div class="progress-fill bg-green-500 h-2 rounded-full" style="width: 0%"></div>
                     </div>
+                </div>
+                <div class="lesson-card bg-white dark:bg-dark-card p-6 rounded-lg shadow-lg cursor-pointer hover:shadow-xl transition" data-lesson="css">
+                    <h3 class="text-xl font-bold text-primary mb-2">CSS Styling</h3>
+                    <p class="text-gray-600 dark:text-gray-300 mb-4">Make your websites beautiful and responsive</p>
+                    <div class="progress-bar bg-gray-200 dark:bg-gray-700 rounded-full h-2">
+                        <div class="progress-fill bg-green-500 h-2 rounded-full" style="width: 0%"></div>
+                    </div>
+                </div>
+                <div class="lesson-card bg-white dark:bg-dark-card p-6 rounded-lg shadow-lg cursor-pointer hover:shadow-xl transition" data-lesson="js">
+                    <h3 class="text-xl font-bold text-primary mb-2">JavaScript</h3>
+                    <p class="text-gray-600 dark:text-gray-300 mb-4">Add interactivity to your web pages</p>
+                    <div class="progress-bar bg-gray-200 dark:bg-gray-700 rounded-full h-2">
+                        <div class="progress-fill bg-green-500 h-2 rounded-full" style="width: 0%"></div>
+                    </div>
+                </div>
+            </div>
 
-                    <div id="lessonContent" class="hidden">
-                        <div class="flex justify-between items-center mb-6">
-                            <h3 id="lessonTitle" class="text-2xl font-semibold"></h3>
-                            <button id="backToCourses" class="glass px-4 py-2 rounded-lg">
-                                <i class="fas fa-arrow-left mr-2"></i>Back to Courses
-                            </button>
+            <!-- Lesson Content -->
+            <div id="lessonContent" class="hidden bg-white dark:bg-dark-card p-6 rounded-lg shadow-lg">
+                <div class="flex justify-between items-center mb-4">
+                    <h3 id="lessonTitle" class="text-2xl font-bold text-primary"></h3>
+                    <button id="closeLesson" class="text-gray-500 hover:text-gray-700 dark:hover:text-gray-300">✕</button>
+                </div>
+                <div id="lessonBody" class="prose dark:prose-invert max-w-none"></div>
+                <div class="mt-6">
+                    <h4 class="text-lg font-semibold mb-4">Try it Yourself</h4>
+                    <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-4">
+                        <div>
+                            <label class="block text-sm font-medium mb-2">HTML</label>
+                            <textarea id="htmlEditor" class="w-full h-40 border rounded p-2 font-mono dark:bg-gray-800 dark:text-white"></textarea>
                         </div>
-                        <div class="grid md:grid-cols-2 gap-8">
-                            <div class="glass p-6 rounded-xl">
-                                <div id="lessonText" class="prose prose-invert max-w-none"></div>
-                            </div>
-                            <div class="glass p-6 rounded-xl">
-                                <h4 class="text-lg font-semibold mb-4">Try It Yourself</h4>
-                                <div class="code-editor p-4 mb-4">
-                                    <textarea id="codeEditor" class="w-full h-48 bg-transparent text-white resize-none focus:outline-none font-mono" placeholder="Write your code here..."></textarea>
-                                </div>
-                                <button id="runCode" class="btn-primary px-4 py-2 rounded-lg mb-4">
-                                    <i class="fas fa-play mr-2"></i>Run Code
-                                </button>
-                                <div class="bg-black p-4 rounded-lg">
-                                    <h5 class="font-semibold mb-2">Output:</h5>
-                                    <div id="codeOutput" class="min-h-20 font-mono text-sm"></div>
-                                </div>
-                            </div>
+                        <div>
+                            <label class="block text-sm font-medium mb-2">CSS</label>
+                            <textarea id="cssEditor" class="w-full h-40 border rounded p-2 font-mono dark:bg-gray-800 dark:text-white"></textarea>
                         </div>
+                    </div>
+                    <div class="mb-4">
+                        <label class="block text-sm font-medium mb-2">JavaScript</label>
+                        <textarea id="jsEditor" class="w-full h-32 border rounded p-2 font-mono dark:bg-gray-800 dark:text-white"></textarea>
+                    </div>
+                    <button id="runCode" class="bg-primary text-white px-4 py-2 rounded hover:bg-blue-700 transition">Run Code</button>
+                    <div class="mt-4 border rounded p-4 bg-white dark:bg-gray-900">
+                        <h5 class="font-semibold mb-2">Preview:</h5>
+                        <iframe id="previewFrame" class="w-full h-64 border rounded"></iframe>
                     </div>
                 </div>
             </div>
         </section>
 
         <!-- Projects Section -->
-        <section id="projects" class="section min-h-screen py-20">
-            <div class="container mx-auto px-4">
-                <div class="glass p-8 rounded-3xl">
-                    <div class="flex justify-between items-center mb-8">
-                        <h2 class="text-4xl font-bold gradient-text">Projects Hub</h2>
-                        <button id="createProjectBtn" class="btn-primary px-6 py-3 rounded-lg">
-                            <i class="fas fa-plus mr-2"></i>New Project
-                        </button>
-                    </div>
-                    
-                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6" id="projectsGrid">
-                        <!-- Projects will be loaded here -->
-                    </div>
-                </div>
+        <section id="projects" class="fade-in hidden">
+            <div class="flex justify-between items-center mb-8">
+                <h2 class="text-3xl font-bold text-gray-900 dark:text-white">Community Projects</h2>
+                <button id="createProjectBtn" class="bg-primary text-white px-4 py-2 rounded hover:bg-blue-700 transition">Create Project</button>
+            </div>
+            <div id="projectsGrid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                <!-- Projects will be loaded here -->
             </div>
         </section>
 
-        <!-- API Hub Section -->
-        <section id="api" class="section min-h-screen py-20">
-            <div class="container mx-auto px-4">
-                <div class="glass p-8 rounded-3xl">
-                    <h2 class="text-4xl font-bold mb-8 gradient-text text-center">API Hub</h2>
-                    
-                    <div class="grid md:grid-cols-2 gap-8">
-                        <div class="space-y-6">
-                            <div class="glass p-6 rounded-xl">
-                                <h3 class="text-xl font-semibold mb-4">Available APIs</h3>
-                                <div id="apisList" class="space-y-4">
-                                    <!-- APIs will be loaded here -->
-                                </div>
-                            </div>
-                            
-                            <div class="glass p-6 rounded-xl">
-                                <h3 class="text-xl font-semibold mb-4">Submit New API</h3>
-                                <form id="apiForm" class="space-y-4">
-                                    <input type="text" placeholder="API Name" class="w-full glass rounded-lg p-3 text-white placeholder-gray-400" required>
-                                    <textarea placeholder="Description" class="w-full glass rounded-lg p-3 text-white placeholder-gray-400" rows="3" required></textarea>
-                                    <input type="url" placeholder="Endpoint URL" class="w-full glass rounded-lg p-3 text-white placeholder-gray-400" required>
-                                    <select class="w-full glass rounded-lg p-3 text-white">
-                                        <option value="GET">GET</option>
-                                        <option value="POST">POST</option>
-                                        <option value="PUT">PUT</option>
-                                        <option value="DELETE">DELETE</option>
-                                    </select>
-                                    <button type="submit" class="w-full btn-primary py-3 rounded-lg">Submit API</button>
-                                </form>
-                            </div>
-                        </div>
-                        
-                        <div class="glass p-6 rounded-xl">
-                            <h3 class="text-xl font-semibold mb-4">API Testing Playground</h3>
-                            <div class="space-y-4">
-                                <input type="url" id="apiEndpoint" placeholder="Enter API endpoint" class="w-full glass rounded-lg p-3 text-white placeholder-gray-400">
-                                <select id="apiMethod" class="w-full glass rounded-lg p-3 text-white">
-                                    <option value="GET">GET</option>
-                                    <option value="POST">POST</option>
-                                    <option value="PUT">PUT</option>
-                                    <option value="DELETE">DELETE</option>
-                                </select>
-                                <textarea id="apiBody" placeholder="Request Body (JSON)" class="w-full glass rounded-lg p-3 text-white placeholder-gray-400" rows="4"></textarea>
-                                <button id="testApi" class="w-full btn-primary py-3 rounded-lg">Test API</button>
-                                <div class="bg-black p-4 rounded-lg mt-4">
-                                    <h4 class="font-semibold mb-2">Response:</h4>
-                                    <pre id="apiResponse" class="text-white font-mono text-sm"></pre>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </section>
-
-        <!-- Tools Section -->
-        <section id="tools" class="section min-h-screen py-20">
-            <div class="container mx-auto px-4">
-                <div class="glass p-8 rounded-3xl">
-                    <h2 class="text-4xl font-bold mb-8 gradient-text text-center">Developer Tools</h2>
-                    
-                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
-                        <div class="glass p-6 rounded-xl card-hover cursor-pointer" onclick="showTool('json')">
-                            <div class="text-3xl mb-4 text-green-400">
-                                <i class="fas fa-code"></i>
-                            </div>
-                            <h3 class="font-semibold mb-2 text-lg">JSON Formatter</h3>
-                            <p class="text-sm text-gray-400">Format and validate JSON data</p>
-                        </div>
-                        
-                        <div class="glass p-6 rounded-xl card-hover cursor-pointer" onclick="showTool('regex')">
-                            <div class="text-3xl mb-4 text-purple-400">
-                                <i class="fas fa-search"></i>
-                            </div>
-                            <h3 class="font-semibold mb-2 text-lg">Regex Tester</h3>
-                            <p class="text-sm text-gray-400">Test regular expressions</p>
-                        </div>
-                        
-                        <div class="glass p-6 rounded-xl card-hover cursor-pointer" onclick="showTool('base64')">
-                            <div class="text-3xl mb-4 text-blue-400">
-                                <i class="fas fa-exchange-alt"></i>
-                            </div>
-                            <h3 class="font-semibold mb-2 text-lg">Base64 Converter</h3>
-                            <p class="text-sm text-gray-400">Encode/decode Base64</p>
-                        </div>
-                    </div>
-                    
-                    <div id="toolContent" class="hidden">
-                        <div class="glass p-6 rounded-xl">
-                            <div class="flex justify-between items-center mb-6">
-                                <h3 id="toolTitle" class="text-2xl font-semibold"></h3>
-                                <button onclick="hideTool()" class="glass px-4 py-2 rounded-lg">
-                                    <i class="fas fa-arrow-left mr-2"></i>Back to Tools
-                                </button>
-                            </div>
-                            <div id="toolInterface">
-                                <!-- Tool interfaces will be loaded here -->
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </section>
-
-        <!-- AI Copilot Section -->
-        <section id="ai" class="section min-h-screen py-20">
-            <div class="container mx-auto px-4">
-                <div class="glass p-8 rounded-3xl">
-                    <h2 class="text-4xl font-bold mb-8 gradient-text text-center">AI Coding Assistant</h2>
-                    
-                    <div class="grid md:grid-cols-2 gap-8">
-                        <div class="space-y-6">
-                            <div class="glass p-6 rounded-xl">
-                                <h3 class="text-xl font-semibold mb-4 flex items-center">
-                                    <i class="fas fa-code mr-2 text-cyan-400"></i>Code Generator
-                                </h3>
-                                <textarea 
-                                    id="aiPrompt" 
-                                    placeholder="Describe what you want to code (e.g., 'a function that reverses a string')..."
-                                    class="w-full h-32 glass rounded-lg p-4 text-white placeholder-gray-400 focus:outline-none focus:neon-glow mb-4"
-                                ></textarea>
-                                <select id="aiLanguage" class="w-full glass rounded-lg p-2 text-white mb-4">
-                                    <option value="javascript">JavaScript</option>
-                                    <option value="python">Python</option>
-                                    <option value="html">HTML</option>
-                                    <option value="css">CSS</option>
-                                    <option value="java">Java</option>
-                                    <option value="cpp">C++</option>
-                                </select>
-                                <button id="generateCode" class="btn-primary px-6 py-3 rounded-lg w-full">
-                                    <i class="fas fa-bolt mr-2"></i>Generate Code
-                                </button>
-                            </div>
-
-                            <div class="glass p-6 rounded-xl">
-                                <h3 class="text-xl font-semibold mb-4 flex items-center">
-                                    <i class="fas fa-question-circle mr-2 text-purple-400"></i>Code Explainer
-                                </h3>
-                                <textarea 
-                                    id="codeToExplain" 
-                                    placeholder="Paste your code here for a detailed explanation..."
-                                    class="w-full h-32 glass rounded-lg p-4 text-white placeholder-gray-400 focus:outline-none focus:neon-glow mb-4"
-                                ></textarea>
-                                <button id="explainCode" class="btn-primary px-6 py-3 rounded-lg w-full">
-                                    <i class="fas fa-lightbulb mr-2"></i>Explain Code
-                                </button>
-                            </div>
-                        </div>
-
-                        <div class="glass p-6 rounded-xl">
-                            <h3 class="text-xl font-semibold mb-4 flex items-center">
-                                <i class="fas fa-terminal mr-2 text-green-400"></i>AI Output
-                            </h3>
-                            <div class="code-editor p-4 min-h-96 max-h-96 overflow-auto">
-                                <pre id="aiOutput" class="text-white whitespace-pre-wrap font-mono text-sm"></pre>
-                            </div>
-                            <div class="flex space-x-3 mt-4">
-                                <button id="copyAiOutput" class="flex-1 glass px-4 py-2 rounded-lg">
-                                    <i class="fas fa-copy mr-2"></i>Copy to Clipboard
-                                </button>
-                                <button id="clearAiOutput" class="flex-1 glass px-4 py-2 rounded-lg">
-                                    <i class="fas fa-trash mr-2"></i>Clear
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-                </div>
+        <!-- APIs Section -->
+        <section id="apis" class="fade-in hidden">
+            <h2 class="text-3xl font-bold text-gray-900 dark:text-white mb-8">Free API Marketplace</h2>
+            <div id="apisGrid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                <!-- APIs will be loaded here -->
             </div>
         </section>
 
         <!-- Chat Section -->
-        <section id="chat" class="section min-h-screen py-20">
-            <div class="container mx-auto px-4">
-                <div class="glass p-8 rounded-3xl">
-                    <h2 class="text-4xl font-bold mb-8 gradient-text text-center">Global Developer Chat</h2>
-                    
-                    <div class="grid md:grid-cols-4 gap-6 h-[600px]">
-                        <!-- Channels Sidebar -->
-                        <div class="md:col-span-1 glass p-4 rounded-xl flex flex-col">
-                            <h3 class="font-semibold mb-4 text-lg">Channels</h3>
-                            <div class="space-y-2 flex-1 overflow-auto">
-                                <button class="channel-btn w-full text-left p-3 rounded-lg transition-all hover:bg-white/5" data-channel="general">
-                                    <i class="fas fa-hashtag mr-2 text-gray-400"></i>General
-                                </button>
-                                <button class="channel-btn w-full text-left p-3 rounded-lg transition-all hover:bg-white/5" data-channel="frontend">
-                                    <i class="fas fa-palette mr-2 text-blue-400"></i>Frontend
-                                </button>
-                                <button class="channel-btn w-full text-left p-3 rounded-lg transition-all hover:bg-white/5" data-channel="backend">
-                                    <i class="fas fa-server mr-2 text-green-400"></i>Backend
-                                </button>
-                                <button class="channel-btn w-full text-left p-3 rounded-lg transition-all hover:bg-white/5" data-channel="ai">
-                                    <i class="fas fa-robot mr-2 text-purple-400"></i>AI & ML
-                                </button>
-                            </div>
-                            
-                            <div class="pt-4 border-t border-gray-700 mt-4">
-                                <div class="text-sm text-gray-400 mb-2">Online Users</div>
-                                <div id="onlineUsers" class="space-y-2">
-                                    <div class="flex items-center">
-                                        <div class="w-2 h-2 bg-green-500 rounded-full mr-2"></div>
-                                        <span class="text-sm">Loading...</span>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
+        <section id="chat" class="fade-in hidden">
+            <h2 class="text-3xl font-bold text-gray-900 dark:text-white mb-8">Community Chat</h2>
+            <div class="grid grid-cols-1 lg:grid-cols-4 gap-6">
+                <div class="lg:col-span-1 bg-white dark:bg-dark-card rounded-lg shadow-lg p-4">
+                    <h3 class="text-lg font-semibold mb-4">Rooms</h3>
+                    <div class="space-y-2">
+                        <button class="room-btn w-full text-left p-2 rounded hover:bg-gray-100 dark:hover:bg-gray-700 transition" data-room="general"># General</button>
+                        <button class="room-btn w-full text-left p-2 rounded hover:bg-gray-100 dark:hover:bg-gray-700 transition" data-room="help"># Help</button>
+                        <button class="room-btn w-full text-left p-2 rounded hover:bg-gray-100 dark:hover:bg-gray-700 transition" data-room="jobs"># Jobs</button>
+                    </div>
+                </div>
+                <div class="lg:col-span-3 bg-white dark:bg-dark-card rounded-lg shadow-lg p-4">
+                    <div id="chatMessages" class="h-96 overflow-y-auto mb-4 space-y-2"></div>
+                    <div class="flex space-x-2">
+                        <input type="text" id="messageInput" placeholder="Type your message..." class="flex-1 border rounded p-2 dark:bg-gray-800 dark:text-white" disabled>
+                        <button id="sendMessage" class="bg-primary text-white px-4 py-2 rounded hover:bg-blue-700 transition" disabled>Send</button>
+                    </div>
+                </div>
+            </div>
+        </section>
 
-                        <!-- Chat Area -->
-                        <div class="md:col-span-3 flex flex-col">
-                            <div id="chatHeader" class="glass-dark p-4 rounded-t-xl">
-                                <h3 id="currentChannel" class="font-semibold text-lg">
-                                    <i class="fas fa-hashtag mr-2"></i>Select a channel
-                                </h3>
-                                <div id="channelDescription" class="text-sm text-gray-400 mt-1">
-                                    Join a channel to start chatting with the community
-                                </div>
-                            </div>
-                            
-                            <div id="messagesContainer" class="flex-1 overflow-y-auto p-4 space-y-4 bg-black bg-opacity-20">
-                                <div class="text-center text-gray-400 py-8">
-                                    <i class="fas fa-comments text-4xl mb-4 opacity-50"></i>
-                                    <p>Select a channel to view messages</p>
-                                </div>
-                            </div>
-                            
-                            <div class="glass-dark p-4 rounded-b-xl">
-                                <div id="typingIndicator" class="text-sm text-gray-400 mb-2 hidden">
-                                    <span id="typingUsers"></span> is typing...
-                                </div>
-                                <div class="flex space-x-4">
-                                    <input 
-                                        type="text" 
-                                        id="messageInput"
-                                        placeholder="Type your message..."
-                                        class="flex-1 glass rounded-full px-4 py-3 text-white placeholder-gray-400 focus:outline-none focus:neon-glow"
-                                        disabled
-                                    >
-                                    <button id="sendMessage" class="btn-primary px-6 py-3 rounded-full" disabled>
-                                        <i class="fas fa-paper-plane"></i>
+        <!-- Jobs Section -->
+        <section id="jobs" class="fade-in hidden">
+            <div class="flex justify-between items-center mb-8">
+                <h2 class="text-3xl font-bold text-gray-900 dark:text-white">Job Board</h2>
+                <button id="postJobBtn" class="bg-primary text-white px-4 py-2 rounded hover:bg-blue-700 transition">Post Job</button>
+            </div>
+            <div id="jobsList" class="space-y-4">
+                <!-- Jobs will be loaded here -->
+            </div>
+        </section>
+    </main>
+
+    <!-- Modals -->
+    <!-- Auth Modal -->
+    <div id="authModal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50">
+        <div class="bg-white dark:bg-dark-card rounded-lg p-6 w-full max-w-md">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="text-xl font-bold" id="authModalTitle">Login</h3>
+                <button class="close-modal text-gray-500 hover:text-gray-700">✕</button>
+            </div>
+            <form id="authForm" class="space-y-4">
+                <div id="registerFields" class="hidden space-y-4">
+                    <input type="text" name="name" placeholder="Full Name" class="w-full border rounded p-2 dark:bg-gray-800 dark:text-white">
+                    <select name="skillLevel" class="w-full border rounded p-2 dark:bg-gray-800 dark:text-white">
+                        <option value="">Select Skill Level</option>
+                        <option value="Beginner">Beginner</option>
+                        <option value="Intermediate">Intermediate</option>
+                        <option value="Expert">Expert</option>
+                    </select>
+                    <select name="role" class="w-full border rounded p-2 dark:bg-gray-800 dark:text-white">
+                        <option value="student">Student</option>
+                        <option value="professional">Professional</option>
+                    </select>
+                </div>
+                <input type="email" name="email" placeholder="Email" class="w-full border rounded p-2 dark:bg-gray-800 dark:text-white">
+                <input type="password" name="password" placeholder="Password" class="w-full border rounded p-2 dark:bg-gray-800 dark:text-white">
+                <button type="submit" class="w-full bg-primary text-white py-2 rounded hover:bg-blue-700 transition">Submit</button>
+            </form>
+            <div class="mt-4 text-center">
+                <button id="switchAuthMode" class="text-primary hover:underline">Switch to Register</button>
+            </div>
+            <div class="mt-4 text-center">
+                <button id="githubAuth" class="bg-gray-800 text-white px-4 py-2 rounded hover:bg-gray-700 transition">Login with GitHub</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- AI Assistant Modal -->
+    <div id="aiModal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50">
+        <div class="bg-white dark:bg-dark-card rounded-lg p-6 w-full max-w-2xl h-3/4 flex flex-col">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="text-xl font-bold">AI Coding Assistant</h3>
+                <button class="close-modal text-gray-500 hover:text-gray-700">✕</button>
+            </div>
+            <div id="aiChat" class="flex-1 overflow-y-auto mb-4 space-y-4 p-2 border rounded dark:bg-gray-800"></div>
+            <div class="flex space-x-2">
+                <input type="text" id="aiInput" placeholder="Ask about code, debugging, or best practices..." class="flex-1 border rounded p-2 dark:bg-gray-800 dark:text-white">
+                <button id="sendAiMessage" class="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700 transition">Send</button>
+            </div>
+            <div id="aiQueriesLeft" class="text-sm text-gray-600 dark:text-gray-400 mt-2"></div>
+        </div>
+    </div>
+
+    <!-- Project Creation Modal -->
+    <div id="projectModal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50">
+        <div class="bg-white dark:bg-dark-card rounded-lg p-6 w-full max-w-2xl">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="text-xl font-bold">Create New Project</h3>
+                <button class="close-modal text-gray-500 hover:text-gray-700">✕</button>
+            </div>
+            <form id="projectForm" class="space-y-4">
+                <input type="text" name="title" placeholder="Project Title" class="w-full border rounded p-2 dark:bg-gray-800 dark:text-white" required>
+                <textarea name="description" placeholder="Project Description" class="w-full border rounded p-2 dark:bg-gray-800 dark:text-white" rows="3"></textarea>
+                <input type="text" name="tags" placeholder="Tags (comma separated)" class="w-full border rounded p-2 dark:bg-gray-800 dark:text-white">
+                <input type="text" name="category" placeholder="Category" class="w-full border rounded p-2 dark:bg-gray-800 dark:text-white">
+                <input type="file" name="files" multiple class="w-full border rounded p-2 dark:bg-gray-800">
+                <button type="submit" class="w-full bg-primary text-white py-2 rounded hover:bg-blue-700 transition">Create Project</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Job Posting Modal -->
+    <div id="jobModal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50">
+        <div class="bg-white dark:bg-dark-card rounded-lg p-6 w-full max-w-2xl">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="text-xl font-bold">Post Job Opportunity</h3>
+                <button class="close-modal text-gray-500 hover:text-gray-700">✕</button>
+            </div>
+            <form id="jobForm" class="space-y-4">
+                <input type="text" name="title" placeholder="Job Title" class="w-full border rounded p-2 dark:bg-gray-800 dark:text-white" required>
+                <textarea name="description" placeholder="Job Description" class="w-full border rounded p-2 dark:bg-gray-800 dark:text-white" rows="4" required></textarea>
+                <input type="text" name="company" placeholder="Company" class="w-full border rounded p-2 dark:bg-gray-800 dark:text-white">
+                <input type="text" name="skills" placeholder="Required Skills (comma separated)" class="w-full border rounded p-2 dark:bg-gray-800 dark:text-white">
+                <select name="type" class="w-full border rounded p-2 dark:bg-gray-800 dark:text-white">
+                    <option value="full-time">Full Time</option>
+                    <option value="part-time">Part Time</option>
+                    <option value="contract">Contract</option>
+                    <option value="internship">Internship</option>
+                </select>
+                <input type="text" name="location" placeholder="Location" class="w-full border rounded p-2 dark:bg-gray-800 dark:text-white">
+                <div class="flex items-center">
+                    <input type="checkbox" name="remote" id="remote" class="mr-2">
+                    <label for="remote">Remote Work Available</label>
+                </div>
+                <button type="submit" class="w-full bg-primary text-white py-2 rounded hover:bg-blue-700 transition">Post Job</button>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        class DevsArenaApp {
+            constructor() {
+                this.socket = null;
+                this.currentUser = null;
+                this.currentRoom = 'general';
+                this.init();
+            }
+
+            init() {
+                this.setupEventListeners();
+                this.checkAuthStatus();
+                this.loadStats();
+                this.setupTheme();
+            }
+
+            setupEventListeners() {
+                // Navigation
+                document.querySelectorAll('.nav-link').forEach(link => {
+                    link.addEventListener('click', (e) => {
+                        e.preventDefault();
+                        this.showSection(link.getAttribute('href').substring(1));
+                    });
+                });
+
+                // Auth
+                document.getElementById('loginBtn').addEventListener('click', () => this.showAuthModal('login'));
+                document.getElementById('registerBtn').addEventListener('click', () => this.showAuthModal('register'));
+                document.getElementById('logoutBtn').addEventListener('click', () => this.logout());
+                document.getElementById('switchAuthMode').addEventListener('click', () => this.switchAuthMode());
+                document.getElementById('githubAuth').addEventListener('click', () => this.githubAuth());
+                document.getElementById('authForm').addEventListener('submit', (e) => this.handleAuth(e));
+
+                // Theme
+                document.getElementById('themeToggle').addEventListener('click', () => this.toggleTheme());
+
+                // AI Assistant
+                document.getElementById('aiAssistantBtn').addEventListener('click', () => this.showAiModal());
+                document.getElementById('sendAiMessage').addEventListener('click', () => this.sendAiMessage());
+
+                // Projects
+                document.getElementById('createProjectBtn').addEventListener('click', () => this.showProjectModal());
+                document.getElementById('projectForm').addEventListener('submit', (e) => this.createProject(e));
+
+                // Jobs
+                document.getElementById('postJobBtn').addEventListener('click', () => this.showJobModal());
+                document.getElementById('jobForm').addEventListener('submit', (e) => this.postJob(e));
+
+                // Chat
+                document.querySelectorAll('.room-btn').forEach(btn => {
+                    btn.addEventListener('click', () => this.joinRoom(btn.dataset.room));
+                });
+                document.getElementById('sendMessage').addEventListener('click', () => this.sendMessage());
+
+                // Learning
+                document.querySelectorAll('.lesson-card').forEach(card => {
+                    card.addEventListener('click', () => this.showLesson(card.dataset.lesson));
+                });
+                document.getElementById('closeLesson').addEventListener('click', () => this.hideLesson());
+                document.getElementById('runCode').addEventListener('click', () => this.runCode());
+
+                // Modals
+                document.querySelectorAll('.close-modal').forEach(btn => {
+                    btn.addEventListener('click', () => this.closeModals());
+                });
+
+                // Message input enter key
+                document.getElementById('messageInput').addEventListener('keypress', (e) => {
+                    if (e.key === 'Enter') this.sendMessage();
+                });
+
+                document.getElementById('aiInput').addEventListener('keypress', (e) => {
+                    if (e.key === 'Enter') this.sendAiMessage();
+                });
+            }
+
+            async checkAuthStatus() {
+                try {
+                    const response = await fetch('/api/user');
+                    if (response.ok) {
+                        const data = await response.json();
+                        this.currentUser = data.user;
+                        this.updateUI();
+                        this.connectSocket();
+                    }
+                } catch (error) {
+                    console.log('Not authenticated');
+                }
+            }
+
+            updateUI() {
+                if (this.currentUser) {
+                    document.getElementById('authSection').classList.add('hidden');
+                    document.getElementById('userSection').classList.remove('hidden');
+                    document.getElementById('userName').textContent = this.currentUser.name;
+                    document.getElementById('createProjectBtn').disabled = false;
+                    document.getElementById('postJobBtn').disabled = false;
+                    document.getElementById('messageInput').disabled = false;
+                    document.getElementById('sendMessage').disabled = false;
+                } else {
+                    document.getElementById('authSection').classList.remove('hidden');
+                    document.getElementById('userSection').classList.add('hidden');
+                    document.getElementById('createProjectBtn').disabled = true;
+                    document.getElementById('postJobBtn').disabled = true;
+                    document.getElementById('messageInput').disabled = true;
+                    document.getElementById('sendMessage').disabled = true;
+                }
+            }
+
+            showSection(section) {
+                document.querySelectorAll('section').forEach(sec => sec.classList.add('hidden'));
+                document.getElementById(section).classList.remove('hidden');
+                
+                if (section === 'projects') this.loadProjects();
+                if (section === 'apis') this.loadAPIs();
+                if (section === 'jobs') this.loadJobs();
+                if (section === 'chat') this.loadChatMessages();
+            }
+
+            showAuthModal(mode) {
+                document.getElementById('authModal').classList.remove('hidden');
+                document.getElementById('authModalTitle').textContent = mode === 'login' ? 'Login' : 'Register';
+                document.getElementById('registerFields').classList.toggle('hidden', mode === 'login');
+                document.getElementById('switchAuthMode').textContent = mode === 'login' ? 'Switch to Register' : 'Switch to Login';
+            }
+
+            switchAuthMode() {
+                const currentMode = document.getElementById('authModalTitle').textContent.toLowerCase();
+                this.showAuthModal(currentMode === 'login' ? 'register' : 'login');
+            }
+
+            async handleAuth(e) {
+                e.preventDefault();
+                const formData = new FormData(e.target);
+                const data = Object.fromEntries(formData);
+                const isLogin = document.getElementById('authModalTitle').textContent === 'Login';
+
+                try {
+                    const response = await fetch(`/api/${isLogin ? 'login' : 'register'}`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(data)
+                    });
+
+                    if (response.ok) {
+                        const result = await response.json();
+                        this.currentUser = result.user;
+                        this.updateUI();
+                        this.closeModals();
+                        this.connectSocket();
+                        this.loadStats();
+                    } else {
+                        const error = await response.json();
+                        alert(error.error);
+                    }
+                } catch (error) {
+                    alert('Authentication failed');
+                }
+            }
+
+            githubAuth() {
+                window.location.href = '/auth/github';
+            }
+
+            async logout() {
+                try {
+                    await fetch('/api/logout', { method: 'POST' });
+                    this.currentUser = null;
+                    this.updateUI();
+                    if (this.socket) this.socket.disconnect();
+                } catch (error) {
+                    console.error('Logout failed');
+                }
+            }
+
+            connectSocket() {
+                this.socket = io();
+                
+                this.socket.on('chat-message', (message) => {
+                    this.displayMessage(message);
+                });
+
+                this.socket.on('user-joined', (data) => {
+                    this.displaySystemMessage(`User joined the room`);
+                });
+
+                this.socket.emit('join-room', this.currentRoom);
+            }
+
+            joinRoom(room) {
+                if (this.socket) {
+                    this.socket.emit('leave-room', this.currentRoom);
+                    this.currentRoom = room;
+                    this.socket.emit('join-room', room);
+                    document.getElementById('chatMessages').innerHTML = '';
+                    this.loadChatMessages();
+                }
+            }
+
+            async loadChatMessages() {
+                if (!this.currentUser) return;
+                
+                try {
+                    const response = await fetch(`/api/chat/messages/${this.currentRoom}`);
+                    if (response.ok) {
+                        const messages = await response.json();
+                        messages.forEach(msg => this.displayMessage(msg));
+                    }
+                } catch (error) {
+                    console.error('Failed to load messages');
+                }
+            }
+
+            displayMessage(message) {
+                const messagesDiv = document.getElementById('chatMessages');
+                const messageDiv = document.createElement('div');
+                messageDiv.className = 'message-enter p-2 rounded bg-gray-50 dark:bg-gray-800';
+                messageDiv.innerHTML = `
+                    <div class="flex justify-between">
+                        <span class="font-semibold">${message.userId?.name || 'Unknown'}</span>
+                        <span class="text-sm text-gray-500">${new Date(message.timestamp).toLocaleTimeString()}</span>
+                    </div>
+                    <div>${this.escapeHtml(message.text)}</div>
+                `;
+                messagesDiv.appendChild(messageDiv);
+                messagesDiv.scrollTop = messagesDiv.scrollHeight;
+            }
+
+            displaySystemMessage(text) {
+                const messagesDiv = document.getElementById('chatMessages');
+                const messageDiv = document.createElement('div');
+                messageDiv.className = 'text-center text-gray-500 text-sm italic';
+                messageDiv.textContent = text;
+                messagesDiv.appendChild(messageDiv);
+                messagesDiv.scrollTop = messagesDiv.scrollHeight;
+            }
+
+            sendMessage() {
+                const input = document.getElementById('messageInput');
+                const text = input.value.trim();
+                
+                if (text && this.socket) {
+                    this.socket.emit('chat-message', {
+                        room: this.currentRoom,
+                        userId: this.currentUser.id,
+                        text: text
+                    });
+                    input.value = '';
+                }
+            }
+
+            async loadProjects() {
+                try {
+                    const response = await fetch('/api/projects');
+                    if (response.ok) {
+                        const projects = await response.json();
+                        const grid = document.getElementById('projectsGrid');
+                        grid.innerHTML = projects.map(project => `
+                            <div class="bg-white dark:bg-dark-card rounded-lg shadow-lg p-4">
+                                <h3 class="text-xl font-bold text-primary mb-2">${this.escapeHtml(project.title)}</h3>
+                                <p class="text-gray-600 dark:text-gray-300 mb-4">${this.escapeHtml(project.description)}</p>
+                                <div class="flex justify-between items-center">
+                                    <span class="text-sm text-gray-500">by ${project.userId?.name}</span>
+                                    <button class="like-btn bg-gray-200 dark:bg-gray-700 px-3 py-1 rounded text-sm" data-id="${project._id}">
+                                        ♥ ${project.likes?.length || 0}
                                     </button>
                                 </div>
                             </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </section>
+                        `).join('');
 
-        <!-- Hackathons Section -->
-        <section id="hackathons" class="section min-h-screen py-20">
-            <div class="container mx-auto px-4">
-                <div class="glass p-8 rounded-3xl">
-                    <h2 class="text-4xl font-bold mb-8 gradient-text text-center">Hackathons & Challenges</h2>
-                    
-                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6" id="hackathonsGrid">
-                        <!-- Hackathons will be loaded here -->
-                    </div>
-                </div>
-            </div>
-        </section>
-
-        <!-- Dashboard Section -->
-        <section id="dashboard" class="section min-h-screen py-20">
-            <div class="container mx-auto px-4">
-                <div class="glass p-8 rounded-3xl">
-                    <h2 class="text-4xl font-bold mb-8 gradient-text">Developer Dashboard</h2>
-                    
-                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-                        <div class="glass p-6 rounded-xl text-center">
-                            <div class="text-3xl font-bold gradient-text" id="dashProjects">0</div>
-                            <div class="text-gray-400">Projects</div>
-                        </div>
-                        <div class="glass p-6 rounded-xl text-center">
-                            <div class="text-3xl font-bold gradient-text" id="dashReputation">0</div>
-                            <div class="text-gray-400">Reputation</div>
-                        </div>
-                        <div class="glass p-6 rounded-xl text-center">
-                            <div class="text-3xl font-bold gradient-text" id="dashFollowers">0</div>
-                            <div class="text-gray-400">Followers</div>
-                        </div>
-                        <div class="glass p-6 rounded-xl text-center">
-                            <div class="text-3xl font-bold gradient-text" id="dashHackathons">0</div>
-                            <div class="text-gray-400">Hackathons</div>
-                        </div>
-                    </div>
-                    
-                    <div class="grid md:grid-cols-2 gap-8">
-                        <div class="glass p-6 rounded-xl">
-                            <h3 class="text-xl font-semibold mb-4">My Projects</h3>
-                            <div id="userProjects" class="space-y-4">
-                                <!-- User projects will be loaded here -->
-                            </div>
-                        </div>
-                        
-                        <div class="glass p-6 rounded-xl">
-                            <h3 class="text-xl font-semibold mb-4">Recent Activity</h3>
-                            <div id="userActivity" class="space-y-4">
-                                <!-- User activity will be loaded here -->
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </section>
-
-        <!-- Admin Section -->
-        <section id="admin" class="section min-h-screen py-20">
-            <div class="container mx-auto px-4">
-                <div class="glass p-8 rounded-3xl">
-                    <h2 class="text-4xl font-bold mb-8 gradient-text">Admin Panel</h2>
-                    
-                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-                        <div class="glass p-6 rounded-xl text-center">
-                            <div class="text-3xl font-bold gradient-text" id="adminUsers">0</div>
-                            <div class="text-gray-400">Total Users</div>
-                        </div>
-                        <div class="glass p-6 rounded-xl text-center">
-                            <div class="text-3xl font-bold gradient-text" id="adminProjects">0</div>
-                            <div class="text-gray-400">Total Projects</div>
-                        </div>
-                        <div class="glass p-6 rounded-xl text-center">
-                            <div class="text-3xl font-bold gradient-text" id="adminPending">0</div>
-                            <div class="text-gray-400">Pending APIs</div>
-                        </div>
-                        <div class="glass p-6 rounded-xl text-center">
-                            <div class="text-3xl font-bold gradient-text" id="adminOnline">0</div>
-                            <div class="text-gray-400">Online Users</div>
-                        </div>
-                    </div>
-                    
-                    <div class="grid md:grid-cols-2 gap-8">
-                        <div class="glass p-6 rounded-xl">
-                            <h3 class="text-xl font-semibold mb-4">User Management</h3>
-                            <div id="adminUsersList" class="space-y-4 max-h-96 overflow-y-auto">
-                                <!-- Users list will be loaded here -->
-                            </div>
-                        </div>
-                        
-                        <div class="glass p-6 rounded-xl">
-                            <h3 class="text-xl font-semibold mb-4">API Approvals</h3>
-                            <div id="adminApisList" class="space-y-4 max-h-96 overflow-y-auto">
-                                <!-- Pending APIs will be loaded here -->
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </section>
-
-        <!-- Auth Modals -->
-        <div id="loginModal" class="fixed inset-0 bg-black/80 hidden items-center justify-center z-50 p-4">
-            <div class="glass p-8 rounded-3xl max-w-md w-full neon-glow">
-                <h3 class="text-2xl font-bold mb-6 gradient-text text-center">Login to DEVS ARENA</h3>
-                
-                <form id="loginForm" class="space-y-4">
-                    <div>
-                        <label class="block text-gray-300 mb-2">Email</label>
-                        <input type="email" name="email" placeholder="your@email.com" class="w-full glass rounded-lg p-3 text-white placeholder-gray-400 focus:outline-none focus:neon-glow" required>
-                    </div>
-                    <div>
-                        <label class="block text-gray-300 mb-2">Password</label>
-                        <input type="password" name="password" placeholder="••••••••" class="w-full glass rounded-lg p-3 text-white placeholder-gray-400 focus:outline-none focus:neon-glow" required>
-                    </div>
-                    <button type="submit" class="w-full btn-primary py-3 rounded-lg font-semibold">
-                        <i class="fas fa-sign-in-alt mr-2"></i>Login
-                    </button>
-                </form>
-
-                <div class="text-center mt-6">
-                    <div class="relative">
-                        <div class="absolute inset-0 flex items-center">
-                            <div class="w-full border-t border-gray-700"></div>
-                        </div>
-                        <div class="relative flex justify-center text-sm">
-                            <span class="px-2 bg-transparent text-gray-400">Or continue with</span>
-                        </div>
-                    </div>
-                    
-                    <button id="githubLogin" class="w-full glass py-3 rounded-lg flex items-center justify-center space-x-2 mt-4 hover:neon-glow transition-all">
-                        <i class="fab fa-github"></i>
-                        <span>GitHub</span>
-                    </button>
-                </div>
-
-                <p class="text-center mt-6 text-gray-400">
-                    Don't have an account? 
-                    <button id="showRegister" class="text-cyan-400 hover:underline font-medium">Register now</button>
-                </p>
-            </div>
-        </div>
-
-        <div id="registerModal" class="fixed inset-0 bg-black/80 hidden items-center justify-center z-50 p-4">
-            <div class="glass p-8 rounded-3xl max-w-md w-full neon-glow overflow-y-auto max-h-screen">
-                <h3 class="text-2xl font-bold mb-6 gradient-text text-center">Join DEVS ARENA</h3>
-                
-                <form id="registerForm" class="space-y-4">
-                    <div>
-                        <label class="block text-gray-300 mb-2">Full Name</label>
-                        <input type="text" name="fullName" placeholder="John Doe" class="w-full glass rounded-lg p-3 text-white placeholder-gray-400 focus:outline-none focus:neon-glow" required>
-                    </div>
-                    <div>
-                        <label class="block text-gray-300 mb-2">Email</label>
-                        <input type="email" name="email" placeholder="your@email.com" class="w-full glass rounded-lg p-3 text-white placeholder-gray-400 focus:outline-none focus:neon-glow" required>
-                    </div>
-                    <div>
-                        <label class="block text-gray-300 mb-2">Password</label>
-                        <input type="password" name="password" placeholder="••••••••" class="w-full glass rounded-lg p-3 text-white placeholder-gray-400 focus:outline-none focus:neon-glow" required>
-                    </div>
-                    
-                    <div class="grid grid-cols-2 gap-4">
-                        <div>
-                            <label class="block text-gray-300 mb-2">Country</label>
-                            <select name="country" class="w-full glass rounded-lg p-3 text-white focus:outline-none focus:neon-glow">
-                                <option value="">Select Country</option>
-                                <option value="US">United States</option>
-                                <option value="KE">Kenya</option>
-                                <option value="UK">United Kingdom</option>
-                                <option value="IN">India</option>
-                                <option value="CA">Canada</option>
-                            </select>
-                        </div>
-                        <div>
-                            <label class="block text-gray-300 mb-2">Skill Level</label>
-                            <select name="skillLevel" class="w-full glass rounded-lg p-3 text-white focus:outline-none focus:neon-glow">
-                                <option value="">Select Level</option>
-                                <option value="beginner">Beginner</option>
-                                <option value="intermediate">Intermediate</option>
-                                <option value="advanced">Advanced</option>
-                            </select>
-                        </div>
-                    </div>
-                    
-                    <div>
-                        <label class="block text-gray-300 mb-2">Developer Type</label>
-                        <select name="developerType" class="w-full glass rounded-lg p-3 text-white focus:outline-none focus:neon-glow">
-                            <option value="">Select Type</option>
-                            <option value="frontend">Frontend</option>
-                            <option value="backend">Backend</option>
-                            <option value="full-stack">Full Stack</option>
-                            <option value="student">Student</option>
-                            <option value="mobile">Mobile</option>
-                            <option value="devops">DevOps</option>
-                        </select>
-                    </div>
-                    
-                    <div>
-                        <label class="block text-gray-300 mb-2">Short Bio</label>
-                        <textarea name="bio" placeholder="Tell us about yourself..." class="w-full glass rounded-lg p-3 text-white placeholder-gray-400 focus:outline-none focus:neon-glow" rows="3"></textarea>
-                    </div>
-
-                    <button type="submit" class="w-full btn-primary py-3 rounded-lg font-semibold">
-                        <i class="fas fa-user-plus mr-2"></i>Create Account
-                    </button>
-                </form>
-
-                <p class="text-center mt-6 text-gray-400">
-                    Already have an account? 
-                    <button id="showLogin" class="text-cyan-400 hover:underline font-medium">Login here</button>
-                </p>
-            </div>
-        </div>
-
-        <!-- Create Project Modal -->
-        <div id="createProjectModal" class="fixed inset-0 bg-black/80 hidden items-center justify-center z-50 p-4">
-            <div class="glass p-8 rounded-3xl max-w-2xl w-full neon-glow">
-                <h3 class="text-2xl font-bold mb-6 gradient-text text-center">Create New Project</h3>
-                
-                <form id="projectForm" class="space-y-4">
-                    <div class="grid md:grid-cols-2 gap-4">
-                        <div>
-                            <label class="block text-gray-300 mb-2">Project Name</label>
-                            <input type="text" name="name" placeholder="My Awesome Project" class="w-full glass rounded-lg p-3 text-white placeholder-gray-400" required>
-                        </div>
-                        <div>
-                            <label class="block text-gray-300 mb-2">Category</label>
-                            <select name="category" class="w-full glass rounded-lg p-3 text-white">
-                                <option value="web">Web Application</option>
-                                <option value="mobile">Mobile App</option>
-                                <option value="desktop">Desktop App</option>
-                                <option value="api">API</option>
-                                <option value="library">Library</option>
-                            </select>
-                        </div>
-                    </div>
-                    
-                    <div>
-                        <label class="block text-gray-300 mb-2">Description</label>
-                        <textarea name="description" placeholder="Describe your project..." class="w-full glass rounded-lg p-3 text-white placeholder-gray-400" rows="3" required></textarea>
-                    </div>
-                    
-                    <div>
-                        <label class="block text-gray-300 mb-2">Tech Stack (comma separated)</label>
-                        <input type="text" name="techStack" placeholder="JavaScript, React, Node.js" class="w-full glass rounded-lg p-3 text-white placeholder-gray-400">
-                    </div>
-                    
-                    <div class="grid md:grid-cols-2 gap-4">
-                        <div>
-                            <label class="block text-gray-300 mb-2">GitHub URL</label>
-                            <input type="url" name="githubUrl" placeholder="https://github.com/username/repo" class="w-full glass rounded-lg p-3 text-white placeholder-gray-400">
-                        </div>
-                        <div>
-                            <label class="block text-gray-300 mb-2">Live Demo URL</label>
-                            <input type="url" name="liveUrl" placeholder="https://myproject.com" class="w-full glass rounded-lg p-3 text-white placeholder-gray-400">
-                        </div>
-                    </div>
-
-                    <button type="submit" class="w-full btn-primary py-3 rounded-lg font-semibold">
-                        <i class="fas fa-plus mr-2"></i>Create Project
-                    </button>
-                </form>
-            </div>
-        </div>
-    </main>
-
-    <script>
-        // Global state
-        let currentUser = null;
-        let socket = null;
-        let currentChannel = null;
-        let typingTimeout = null;
-
-        // DOM Elements
-        const elements = {
-            // Navigation
-            mobileMenuBtn: document.getElementById('mobileMenuBtn'),
-            mobileNav: document.getElementById('mobileNav'),
-            closeMobileMenu: document.getElementById('closeMobileMenu'),
-            navLinks: document.querySelectorAll('.nav-link'),
-            adminNav: document.getElementById('adminNav'),
-            mobileAdminNav: document.getElementById('mobileAdminNav'),
-            
-            // Auth
-            authSection: document.getElementById('authSection'),
-            loginBtn: document.getElementById('loginBtn'),
-            registerBtn: document.getElementById('registerBtn'),
-            mobileLoginBtn: document.getElementById('mobileLoginBtn'),
-            mobileRegisterBtn: document.getElementById('mobileRegisterBtn'),
-            loginModal: document.getElementById('loginModal'),
-            registerModal: document.getElementById('registerModal'),
-            loginForm: document.getElementById('loginForm'),
-            registerForm: document.getElementById('registerForm'),
-            showLogin: document.getElementById('showLogin'),
-            showRegister: document.getElementById('showRegister'),
-            githubLogin: document.getElementById('githubLogin'),
-
-            // Sections
-            sections: document.querySelectorAll('.section'),
-
-            // Home Stats
-            statsUsers: document.getElementById('statsUsers'),
-            statsProjects: document.getElementById('statsProjects'),
-            statsLessons: document.getElementById('statsLessons'),
-            statsHackathons: document.getElementById('statsHackathons'),
-
-            // Learning
-            coursesGrid: document.getElementById('coursesGrid'),
-            lessonContent: document.getElementById('lessonContent'),
-            lessonTitle: document.getElementById('lessonTitle'),
-            lessonText: document.getElementById('lessonText'),
-            codeEditor: document.getElementById('codeEditor'),
-            runCode: document.getElementById('runCode'),
-            codeOutput: document.getElementById('codeOutput'),
-            backToCourses: document.getElementById('backToCourses'),
-
-            // Projects
-            createProjectBtn: document.getElementById('createProjectBtn'),
-            projectsGrid: document.getElementById('projectsGrid'),
-            createProjectModal: document.getElementById('createProjectModal'),
-            projectForm: document.getElementById('projectForm'),
-
-            // API Hub
-            apisList: document.getElementById('apisList'),
-            apiForm: document.getElementById('apiForm'),
-            apiEndpoint: document.getElementById('apiEndpoint'),
-            apiMethod: document.getElementById('apiMethod'),
-            apiBody: document.getElementById('apiBody'),
-            testApi: document.getElementById('testApi'),
-            apiResponse: document.getElementById('apiResponse'),
-
-            // Tools
-            toolContent: document.getElementById('toolContent'),
-            toolTitle: document.getElementById('toolTitle'),
-            toolInterface: document.getElementById('toolInterface'),
-
-            // AI
-            aiPrompt: document.getElementById('aiPrompt'),
-            aiLanguage: document.getElementById('aiLanguage'),
-            generateCode: document.getElementById('generateCode'),
-            codeToExplain: document.getElementById('codeToExplain'),
-            explainCode: document.getElementById('explainCode'),
-            aiOutput: document.getElementById('aiOutput'),
-            copyAiOutput: document.getElementById('copyAiOutput'),
-            clearAiOutput: document.getElementById('clearAiOutput'),
-
-            // Chat
-            channelBtns: document.querySelectorAll('.channel-btn'),
-            currentChannel: document.getElementById('currentChannel'),
-            channelDescription: document.getElementById('channelDescription'),
-            messagesContainer: document.getElementById('messagesContainer'),
-            messageInput: document.getElementById('messageInput'),
-            sendMessage: document.getElementById('sendMessage'),
-            typingIndicator: document.getElementById('typingIndicator'),
-            typingUsers: document.getElementById('typingUsers'),
-            onlineUsers: document.getElementById('onlineUsers'),
-
-            // Hackathons
-            hackathonsGrid: document.getElementById('hackathonsGrid'),
-
-            // Dashboard
-            dashProjects: document.getElementById('dashProjects'),
-            dashReputation: document.getElementById('dashReputation'),
-            dashFollowers: document.getElementById('dashFollowers'),
-            dashHackathons: document.getElementById('dashHackathons'),
-            userProjects: document.getElementById('userProjects'),
-            userActivity: document.getElementById('userActivity'),
-
-            // Admin
-            adminUsers: document.getElementById('adminUsers'),
-            adminProjects: document.getElementById('adminProjects'),
-            adminPending: document.getElementById('adminPending'),
-            adminOnline: document.getElementById('adminOnline'),
-            adminUsersList: document.getElementById('adminUsersList'),
-            adminApisList: document.getElementById('adminApisList')
-        };
-
-        // Navigation Functions
-        function setupNavigation() {
-            // Desktop navigation
-            elements.navLinks.forEach(link => {
-                link.addEventListener('click', (e) => {
-                    e.preventDefault();
-                    const target = e.target.getAttribute('href').substring(1);
-                    
-                    // Update active states
-                    elements.navLinks.forEach(l => l.classList.remove('active'));
-                    e.target.classList.add('active');
-                    
-                    // Show section
-                    showSection(target);
-                    
-                    // Close mobile menu if open
-                    elements.mobileNav.classList.remove('open');
-                });
-            });
-            
-            // Mobile menu toggle
-            elements.mobileMenuBtn.addEventListener('click', () => {
-                elements.mobileNav.classList.add('open');
-            });
-            
-            elements.closeMobileMenu.addEventListener('click', () => {
-                elements.mobileNav.classList.remove('open');
-            });
-            
-            // Close mobile menu when clicking outside
-            elements.mobileNav.addEventListener('click', (e) => {
-                if (e.target === elements.mobileNav) {
-                    elements.mobileNav.classList.remove('open');
-                }
-            });
-        }
-        
-        function showSection(sectionId) {
-            // Hide all sections
-            elements.sections.forEach(section => {
-                section.classList.remove('active');
-            });
-            
-            // Show target section
-            const targetSection = document.getElementById(sectionId);
-            if (targetSection) {
-                targetSection.classList.add('active');
-                
-                // Load section data
-                loadSectionData(sectionId);
-                
-                // Scroll to top of section
-                window.scrollTo({
-                    top: 80,
-                    behavior: 'smooth'
-                });
-            }
-        }
-
-        function loadSectionData(sectionId) {
-            switch(sectionId) {
-                case 'home':
-                    loadHomeStats();
-                    break;
-                case 'learn':
-                    loadCourses();
-                    break;
-                case 'projects':
-                    loadProjects();
-                    break;
-                case 'api':
-                    loadAPIs();
-                    break;
-                case 'hackathons':
-                    loadHackathons();
-                    break;
-                case 'dashboard':
-                    loadDashboard();
-                    break;
-                case 'admin':
-                    loadAdminPanel();
-                    break;
-            }
-        }
-
-        // Auth Functions
-        function setupAuth() {
-            // Login button events
-            elements.loginBtn.addEventListener('click', () => {
-                elements.loginModal.classList.remove('hidden');
-            });
-            
-            elements.mobileLoginBtn.addEventListener('click', () => {
-                elements.loginModal.classList.remove('hidden');
-                elements.mobileNav.classList.remove('open');
-            });
-
-            // Register button events
-            elements.registerBtn.addEventListener('click', () => {
-                elements.registerModal.classList.remove('hidden');
-            });
-            
-            elements.mobileRegisterBtn.addEventListener('click', () => {
-                elements.registerModal.classList.remove('hidden');
-                elements.mobileNav.classList.remove('open');
-            });
-
-            // Modal toggle events
-            elements.showLogin.addEventListener('click', () => {
-                elements.registerModal.classList.add('hidden');
-                elements.loginModal.classList.remove('hidden');
-            });
-
-            elements.showRegister.addEventListener('click', () => {
-                elements.loginModal.classList.add('hidden');
-                elements.registerModal.classList.remove('hidden');
-            });
-
-            // Close modals when clicking outside
-            [elements.loginModal, elements.registerModal, elements.createProjectModal].forEach(modal => {
-                modal.addEventListener('click', (e) => {
-                    if (e.target === modal) {
-                        modal.classList.add('hidden');
-                    }
-                });
-            });
-
-            // Login Form
-            elements.loginForm.addEventListener('submit', async (e) => {
-                e.preventDefault();
-                const formData = new FormData(e.target);
-                const data = {
-                    email: formData.get('email'),
-                    password: formData.get('password')
-                };
-
-                try {
-                    const response = await fetch('/api/login', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify(data)
-                    });
-
-                    const result = await response.json();
-                    
-                    if (response.ok) {
-                        currentUser = result.user;
-                        localStorage.setItem('token', result.token);
-                        updateAuthUI();
-                        elements.loginModal.classList.add('hidden');
-                        initializeSocket();
-                        loadHomeStats();
-                    } else {
-                        alert(result.error);
+                        // Add like button listeners
+                        document.querySelectorAll('.like-btn').forEach(btn => {
+                            btn.addEventListener('click', () => this.likeProject(btn.dataset.id));
+                        });
                     }
                 } catch (error) {
-                    alert('Login failed: ' + error.message);
+                    console.error('Failed to load projects');
                 }
-            });
+            }
 
-            // Register Form
-            elements.registerForm.addEventListener('submit', async (e) => {
-                e.preventDefault();
-                const formData = new FormData(e.target);
-                const data = {
-                    fullName: formData.get('fullName'),
-                    email: formData.get('email'),
-                    password: formData.get('password'),
-                    country: formData.get('country'),
-                    skillLevel: formData.get('skillLevel'),
-                    developerType: formData.get('developerType'),
-                    bio: formData.get('bio')
-                };
-
+            async likeProject(projectId) {
+                if (!this.currentUser) return;
+                
                 try {
-                    const response = await fetch('/api/register', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify(data)
+                    const response = await fetch(`/api/projects/${projectId}/like`, {
+                        method: 'POST'
                     });
-
-                    const result = await response.json();
                     
                     if (response.ok) {
-                        currentUser = result.user;
-                        localStorage.setItem('token', result.token);
-                        updateAuthUI();
-                        elements.registerModal.classList.add('hidden');
-                        initializeSocket();
-                        loadHomeStats();
-                    } else {
-                        alert(result.error);
+                        this.loadProjects();
                     }
                 } catch (error) {
-                    alert('Registration failed: ' + error.message);
+                    console.error('Like failed');
                 }
-            });
+            }
 
-            // GitHub Login
-            elements.githubLogin.addEventListener('click', () => {
-                window.location.href = '/auth/github';
-            });
+            showProjectModal() {
+                if (!this.currentUser) return;
+                document.getElementById('projectModal').classList.remove('hidden');
+            }
 
-            // Create Project
-            elements.createProjectBtn.addEventListener('click', () => {
-                if (!currentUser) {
-                    elements.loginModal.classList.remove('hidden');
-                    return;
-                }
-                elements.createProjectModal.classList.remove('hidden');
-            });
-
-            elements.projectForm.addEventListener('submit', async (e) => {
+            async createProject(e) {
                 e.preventDefault();
-                const formData = new FormData(e.target);
-                const data = {
-                    name: formData.get('name'),
-                    description: formData.get('description'),
-                    techStack: formData.get('techStack'),
-                    githubUrl: formData.get('githubUrl'),
-                    liveUrl: formData.get('liveUrl'),
-                    category: formData.get('category')
-                };
+                if (!this.currentUser) return;
 
+                const formData = new FormData(e.target);
+                
                 try {
-                    const token = localStorage.getItem('token');
                     const response = await fetch('/api/projects', {
                         method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                            'Authorization': `Bearer ${token}`
-                        },
+                        body: formData
+                    });
+
+                    if (response.ok) {
+                        this.closeModals();
+                        this.loadProjects();
+                    } else {
+                        alert('Failed to create project');
+                    }
+                } catch (error) {
+                    alert('Project creation failed');
+                }
+            }
+
+            async loadAPIs() {
+                try {
+                    const response = await fetch('/api/apis');
+                    if (response.ok) {
+                        const apis = await response.json();
+                        const grid = document.getElementById('apisGrid');
+                        grid.innerHTML = apis.map(api => `
+                            <div class="bg-white dark:bg-dark-card rounded-lg shadow-lg p-4">
+                                <h3 class="text-xl font-bold text-primary mb-2">${this.escapeHtml(api.name)}</h3>
+                                <p class="text-gray-600 dark:text-gray-300 mb-2">${this.escapeHtml(api.description)}</p>
+                                <div class="text-sm text-gray-500 mb-2">Category: ${api.category}</div>
+                                <div class="text-sm font-mono bg-gray-100 dark:bg-gray-800 p-2 rounded">${api.endpoint}</div>
+                                <button class="test-api-btn mt-2 bg-primary text-white px-3 py-1 rounded text-sm" data-endpoint="${api.endpoint}">
+                                    Test API
+                                </button>
+                            </div>
+                        `).join('');
+
+                        // Add API test listeners
+                        document.querySelectorAll('.test-api-btn').forEach(btn => {
+                            btn.addEventListener('click', () => this.testAPI(btn.dataset.endpoint));
+                        });
+                    }
+                } catch (error) {
+                    console.error('Failed to load APIs');
+                }
+            }
+
+            async testAPI(endpoint) {
+                try {
+                    const response = await fetch('/api/apis/test', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ url: endpoint, method: 'GET' })
+                    });
+
+                    if (response.ok) {
+                        const result = await response.json();
+                        alert(`API Response: ${JSON.stringify(result.data, null, 2)}`);
+                    }
+                } catch (error) {
+                    alert('API test failed');
+                }
+            }
+
+            async loadJobs() {
+                try {
+                    const response = await fetch('/api/jobs');
+                    if (response.ok) {
+                        const jobs = await response.json();
+                        const list = document.getElementById('jobsList');
+                        list.innerHTML = jobs.map(job => `
+                            <div class="bg-white dark:bg-dark-card rounded-lg shadow-lg p-4">
+                                <h3 class="text-xl font-bold text-primary mb-2">${this.escapeHtml(job.title)}</h3>
+                                <p class="text-gray-600 dark:text-gray-300 mb-2">${this.escapeHtml(job.description)}</p>
+                                <div class="flex justify-between items-center text-sm text-gray-500">
+                                    <span>${job.company} • ${job.type}</span>
+                                    <span>${job.location} ${job.remote ? '(Remote)' : ''}</span>
+                                </div>
+                            </div>
+                        `).join('');
+                    }
+                } catch (error) {
+                    console.error('Failed to load jobs');
+                }
+            }
+
+            showJobModal() {
+                if (!this.currentUser) return;
+                document.getElementById('jobModal').classList.remove('hidden');
+            }
+
+            async postJob(e) {
+                e.preventDefault();
+                if (!this.currentUser) return;
+
+                const formData = new FormData(e.target);
+                const data = Object.fromEntries(formData);
+                data.skills = data.skills ? data.skills.split(',').map(s => s.trim()) : [];
+                data.remote = document.getElementById('remote').checked;
+
+                try {
+                    const response = await fetch('/api/jobs', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify(data)
                     });
 
-                    const result = await response.json();
-                    
                     if (response.ok) {
-                        elements.createProjectModal.classList.add('hidden');
-                        loadProjects();
-                        alert('Project created successfully!');
+                        this.closeModals();
+                        this.loadJobs();
                     } else {
-                        alert(result.error);
+                        alert('Failed to post job');
                     }
                 } catch (error) {
-                    alert('Failed to create project: ' + error.message);
+                    alert('Job posting failed');
                 }
-            });
-        }
+            }
 
-        function updateAuthUI() {
-            if (currentUser) {
-                elements.authSection.innerHTML = `
-                    <div class="flex items-center space-x-3">
-                        <img src="${currentUser.avatar || 'https://via.placeholder.com/32'}" 
-                             alt="Avatar" 
-                             class="w-8 h-8 rounded-full border-2 border-cyan-400">
-                        <span class="hidden md:block">${currentUser.fullName}</span>
-                        <button id="logoutBtn" class="glass px-4 py-2 rounded-lg hover:neon-glow">
-                            <i class="fas fa-sign-out-alt mr-2"></i>Logout
-                        </button>
-                    </div>
-                `;
-                document.getElementById('logoutBtn').addEventListener('click', logout);
-                
-                // Show admin nav if user is admin
-                if (currentUser.isAdmin) {
-                    elements.adminNav.classList.remove('hidden');
-                    elements.mobileAdminNav.classList.remove('hidden');
+            showAiModal() {
+                document.getElementById('aiModal').classList.remove('hidden');
+                if (this.currentUser) {
+                    document.getElementById('aiQueriesLeft').textContent = `Queries left today: ${10 - (this.currentUser.aiQueriesToday || 0)}`;
                 }
-            } else {
-                elements.authSection.innerHTML = `
-                    <button id="loginBtn" class="glass px-4 py-2 rounded-lg hover:neon-glow transition-all">
-                        <i class="fas fa-sign-in-alt mr-2"></i>Login
-                    </button>
-                    <button id="registerBtn" class="btn-primary px-4 py-2 rounded-lg text-white">
-                        <i class="fas fa-user-plus mr-2"></i>Register
-                    </button>
-                `;
-                // Re-attach event listeners
-                document.getElementById('loginBtn').addEventListener('click', () => elements.loginModal.classList.remove('hidden'));
-                document.getElementById('registerBtn').addEventListener('click', () => elements.registerModal.classList.remove('hidden'));
+            }
+
+            async sendAiMessage() {
+                const input = document.getElementById('aiInput');
+                const message = input.value.trim();
                 
-                // Hide admin nav
-                elements.adminNav.classList.add('hidden');
-                elements.mobileAdminNav.classList.add('hidden');
-            }
-        }
+                if (!message || !this.currentUser) return;
 
-        function logout() {
-            currentUser = null;
-            localStorage.removeItem('token');
-            if (socket) {
-                socket.disconnect();
-                socket = null;
-            }
-            updateAuthUI();
-            // Reload home to update stats
-            loadHomeStats();
-        }
+                const chat = document.getElementById('aiChat');
+                chat.innerHTML += `<div class="text-right"><strong>You:</strong> ${this.escapeHtml(message)}</div>`;
+                input.value = '';
 
-        // Check existing auth
-        function checkAuth() {
-            const token = localStorage.getItem('token');
-            if (token) {
-                fetch('/api/users/me', {
-                    headers: { 'Authorization': `Bearer ${token}` }
-                })
-                .then(response => {
+                try {
+                    const response = await fetch('/api/ai/chat', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ message })
+                    });
+
                     if (response.ok) {
-                        return response.json();
-                    }
-                    throw new Error('Not authenticated');
-                })
-                .then(user => {
-                    currentUser = user;
-                    updateAuthUI();
-                    initializeSocket();
-                })
-                .catch(() => {
-                    localStorage.removeItem('token');
-                });
-            }
-        }
-
-        // Data Loading Functions
-        async function loadHomeStats() {
-            try {
-                const response = await fetch('/api/admin/stats');
-                if (response.ok) {
-                    const stats = await response.json();
-                    elements.statsUsers.textContent = stats.totalUsers;
-                    elements.statsProjects.textContent = stats.totalProjects;
-                    elements.statsHackathons.textContent = stats.totalHackathons;
-                }
-            } catch (error) {
-                console.error('Failed to load stats:', error);
-            }
-        }
-
-        async function loadCourses() {
-            try {
-                const response = await fetch('/api/lessons');
-                const lessons = await response.json();
-                
-                // Group lessons by course
-                const courses = {};
-                lessons.forEach(lesson => {
-                    if (!courses[lesson.course]) {
-                        courses[lesson.course] = {
-                            lessons: [],
-                            count: 0
-                        };
-                    }
-                    courses[lesson.course].lessons.push(lesson);
-                    courses[lesson.course].count++;
-                });
-
-                elements.coursesGrid.innerHTML = '';
-                for (const [courseName, courseData] of Object.entries(courses)) {
-                    const courseDiv = document.createElement('div');
-                    courseDiv.className = 'glass p-6 rounded-xl card-hover cursor-pointer';
-                    courseDiv.innerHTML = `
-                        <div class="flex items-center mb-4">
-                            <div class="w-12 h-12 bg-${getCourseColor(courseName)}-500 rounded-lg flex items-center justify-center mr-4">
-                                <i class="fas fa-${getCourseIcon(courseName)} text-white text-xl"></i>
-                            </div>
-                            <div>
-                                <h3 class="font-semibold text-lg">${courseName.toUpperCase()}</h3>
-                                <div class="progress-bar mt-2">
-                                    <div class="progress-fill" style="width: 0%"></div>
-                                </div>
-                            </div>
-                        </div>
-                        <p class="text-sm text-gray-400">${courseData.count} lessons</p>
-                    `;
-                    courseDiv.addEventListener('click', () => loadCourseLessons(courseName));
-                    elements.coursesGrid.appendChild(courseDiv);
-                }
-            } catch (error) {
-                console.error('Failed to load courses:', error);
-            }
-        }
-
-        function getCourseColor(course) {
-            const colors = {
-                html: 'orange',
-                css: 'blue',
-                javascript: 'yellow',
-                python: 'green',
-                node: 'green',
-                react: 'blue',
-                git: 'orange'
-            };
-            return colors[course] || 'gray';
-        }
-
-        function getCourseIcon(course) {
-            const icons = {
-                html: 'code',
-                css: 'palette',
-                javascript: 'bolt',
-                python: 'code',
-                node: 'server',
-                react: 'atom',
-                git: 'code-branch'
-            };
-            return icons[course] || 'book';
-        }
-
-        async function loadProjects() {
-            try {
-                const response = await fetch('/api/projects');
-                const data = await response.json();
-                
-                elements.projectsGrid.innerHTML = '';
-                data.projects.forEach(project => {
-                    const projectDiv = document.createElement('div');
-                    projectDiv.className = 'glass p-6 rounded-xl card-hover';
-                    projectDiv.innerHTML = `
-                        <div class="flex items-center mb-4">
-                            <img src="${project.owner.avatar || 'https://via.placeholder.com/40'}" 
-                                 alt="${project.owner.fullName}" 
-                                 class="w-10 h-10 rounded-full mr-3">
-                            <div>
-                                <h3 class="font-semibold">${project.name}</h3>
-                                <p class="text-sm text-gray-400">by ${project.owner.fullName}</p>
-                            </div>
-                        </div>
-                        <p class="text-gray-300 mb-4 text-sm">${project.description}</p>
-                        <div class="flex flex-wrap gap-2 mb-4">
-                            ${project.techStack.map(tech => 
-                                `<span class="glass px-2 py-1 rounded text-xs">${tech}</span>`
-                            ).join('')}
-                        </div>
-                        <div class="flex justify-between items-center text-sm text-gray-400">
-                            <div class="flex items-center space-x-4">
-                                <span><i class="fas fa-heart mr-1"></i> ${project.likes.length}</span>
-                                <span><i class="fas fa-comment mr-1"></i> ${project.comments.length}</span>
-                            </div>
-                            <span>${new Date(project.createdAt).toLocaleDateString()}</span>
-                        </div>
-                    `;
-                    elements.projectsGrid.appendChild(projectDiv);
-                });
-            } catch (error) {
-                console.error('Failed to load projects:', error);
-            }
-        }
-
-        async function loadAPIs() {
-            try {
-                const response = await fetch('/api/apis');
-                const apis = await response.json();
-                
-                elements.apisList.innerHTML = '';
-                apis.forEach(api => {
-                    const apiDiv = document.createElement('div');
-                    apiDiv.className = 'glass p-4 rounded-lg';
-                    apiDiv.innerHTML = `
-                        <div class="flex justify-between items-start mb-2">
-                            <h4 class="font-semibold">${api.name}</h4>
-                            <span class="glass px-2 py-1 rounded text-xs">${api.method}</span>
-                        </div>
-                        <p class="text-sm text-gray-400 mb-2">${api.description}</p>
-                        <div class="flex justify-between items-center text-xs">
-                            <code class="text-cyan-400">${api.endpoint}</code>
-                            <span class="text-gray-500">${api.usageCount} uses</span>
-                        </div>
-                    `;
-                    elements.apisList.appendChild(apiDiv);
-                });
-            } catch (error) {
-                console.error('Failed to load APIs:', error);
-            }
-        }
-
-        async function loadHackathons() {
-            try {
-                const response = await fetch('/api/hackathons');
-                const hackathons = await response.json();
-                
-                elements.hackathonsGrid.innerHTML = '';
-                hackathons.forEach(hackathon => {
-                    const hackathonDiv = document.createElement('div');
-                    hackathonDiv.className = 'glass p-6 rounded-xl card-hover';
-                    hackathonDiv.innerHTML = `
-                        <h3 class="font-semibold text-lg mb-2">${hackathon.name}</h3>
-                        <p class="text-gray-300 mb-4 text-sm">${hackathon.description}</p>
-                        <div class="flex justify-between items-center text-sm text-gray-400 mb-4">
-                            <span>${hackathon.participants.length} participants</span>
-                            <span class="${hackathon.isActive ? 'text-green-400' : 'text-red-400'}">
-                                ${hackathon.isActive ? 'Active' : 'Ended'}
-                            </span>
-                        </div>
-                        <button class="w-full glass py-2 rounded-lg hover:neon-glow transition-all">
-                            ${hackathon.isActive ? 'Join Hackathon' : 'View Results'}
-                        </button>
-                    `;
-                    elements.hackathonsGrid.appendChild(hackathonDiv);
-                });
-            } catch (error) {
-                console.error('Failed to load hackathons:', error);
-            }
-        }
-
-        async function loadDashboard() {
-            if (!currentUser) return;
-            
-            try {
-                const token = localStorage.getItem('token');
-                
-                // Load stats
-                const statsResponse = await fetch('/api/dashboard/stats', {
-                    headers: { 'Authorization': `Bearer ${token}` }
-                });
-                if (statsResponse.ok) {
-                    const stats = await statsResponse.json();
-                    elements.dashProjects.textContent = stats.projects;
-                    elements.dashReputation.textContent = stats.reputation;
-                    elements.dashFollowers.textContent = stats.followers;
-                    elements.dashHackathons.textContent = stats.hackathons;
-                }
-                
-                // Load user projects
-                const projectsResponse = await fetch(`/api/projects/user/${currentUser._id}`, {
-                    headers: { 'Authorization': `Bearer ${token}` }
-                });
-                if (projectsResponse.ok) {
-                    const projects = await projectsResponse.json();
-                    elements.userProjects.innerHTML = projects.map(project => `
-                        <div class="glass p-4 rounded-lg">
-                            <h4 class="font-semibold">${project.name}</h4>
-                            <p class="text-sm text-gray-400 mt-1">${project.description}</p>
-                            <div class="flex justify-between items-center mt-2 text-xs text-gray-500">
-                                <span>${project.likes.length} likes</span>
-                                <span>${new Date(project.createdAt).toLocaleDateString()}</span>
-                            </div>
-                        </div>
-                    `).join('');
-                }
-            } catch (error) {
-                console.error('Failed to load dashboard:', error);
-            }
-        }
-
-        async function loadAdminPanel() {
-            if (!currentUser || !currentUser.isAdmin) return;
-            
-            try {
-                const token = localStorage.getItem('token');
-                
-                // Load admin stats
-                const statsResponse = await fetch('/api/admin/stats', {
-                    headers: { 'Authorization': `Bearer ${token}` }
-                });
-                if (statsResponse.ok) {
-                    const stats = await statsResponse.json();
-                    elements.adminUsers.textContent = stats.totalUsers;
-                    elements.adminProjects.textContent = stats.totalProjects;
-                    elements.adminPending.textContent = stats.pendingAPIs;
-                    elements.adminOnline.textContent = stats.onlineUsers;
-                }
-                
-                // Load users
-                const usersResponse = await fetch('/api/admin/users', {
-                    headers: { 'Authorization': `Bearer ${token}` }
-                });
-                if (usersResponse.ok) {
-                    const users = await usersResponse.json();
-                    elements.adminUsersList.innerHTML = users.map(user => `
-                        <div class="glass p-3 rounded-lg flex justify-between items-center">
-                            <div class="flex items-center space-x-3">
-                                <img src="${user.avatar || 'https://via.placeholder.com/32'}" 
-                                     alt="${user.fullName}" 
-                                     class="w-8 h-8 rounded-full">
-                                <div>
-                                    <div class="font-semibold">${user.fullName}</div>
-                                    <div class="text-xs text-gray-400">${user.email}</div>
-                                </div>
-                            </div>
-                            <div class="flex space-x-2">
-                                <button class="text-xs glass px-2 py-1 rounded ${user.isBanned ? 'bg-red-500' : 'bg-green-500'}">
-                                    ${user.isBanned ? 'Banned' : 'Active'}
-                                </button>
-                            </div>
-                        </div>
-                    `).join('');
-                }
-                
-                // Load pending APIs
-                const apisResponse = await fetch('/api/admin/apis', {
-                    headers: { 'Authorization': `Bearer ${token}` }
-                });
-                if (apisResponse.ok) {
-                    const apis = await apisResponse.json();
-                    const pendingApis = apis.filter(api => !api.isApproved);
-                    elements.adminApisList.innerHTML = pendingApis.map(api => `
-                        <div class="glass p-3 rounded-lg">
-                            <div class="flex justify-between items-start mb-2">
-                                <h4 class="font-semibold">${api.name}</h4>
-                                <span class="glass px-2 py-1 rounded text-xs">${api.method}</span>
-                            </div>
-                            <p class="text-sm text-gray-400 mb-2">${api.description}</p>
-                            <div class="flex justify-between items-center">
-                                <code class="text-xs text-cyan-400">${api.endpoint}</code>
-                                <button class="text-xs btn-primary px-3 py-1 rounded">Approve</button>
-                            </div>
-                        </div>
-                    `).join('');
-                }
-            } catch (error) {
-                console.error('Failed to load admin panel:', error);
-            }
-        }
-
-        // Learning System
-        function setupLearning() {
-            elements.backToCourses.addEventListener('click', () => {
-                elements.lessonContent.classList.add('hidden');
-                document.querySelector('#learn .grid').classList.remove('hidden');
-            });
-
-            elements.runCode.addEventListener('click', () => {
-                const code = elements.codeEditor.value;
-                try {
-                    if (code.includes('<html') || code.includes('<div')) {
-                        elements.codeOutput.innerHTML = code;
-                    } else if (code.includes('console.log')) {
-                        const logs = [];
-                        const originalLog = console.log;
-                        console.log = (...args) => {
-                            logs.push(args.join(' '));
-                        };
-                        
-                        eval(code);
-                        console.log = originalLog;
-                        elements.codeOutput.textContent = logs.join('\n');
+                        const result = await response.json();
+                        chat.innerHTML += `<div class="text-left"><strong>AI:</strong> ${this.escapeHtml(result.response)}</div>`;
+                        document.getElementById('aiQueriesLeft').textContent = `Queries left today: ${result.queriesLeft}`;
                     } else {
-                        const result = eval(code);
-                        elements.codeOutput.textContent = String(result);
+                        chat.innerHTML += `<div class="text-left text-red-500"><strong>AI:</strong> Service unavailable</div>`;
                     }
                 } catch (error) {
-                    elements.codeOutput.textContent = 'Error: ' + error.message;
+                    chat.innerHTML += `<div class="text-left text-red-500"><strong>AI:</strong> Connection failed</div>`;
                 }
-            });
-        }
 
-        async function loadCourseLessons(course) {
-            try {
-                const response = await fetch(`/api/lessons?course=${course}`);
-                const lessons = await response.json();
+                chat.scrollTop = chat.scrollHeight;
+            }
+
+            showLesson(lesson) {
+                const lessons = {
+                    html: {
+                        title: 'HTML Basics',
+                        content: `
+                            <h4>Introduction to HTML</h4>
+                            <p>HTML (HyperText Markup Language) is the standard markup language for creating web pages.</p>
+                            <pre><code class="language-html">&lt;!DOCTYPE html&gt;
+&lt;html&gt;
+&lt;head&gt;
+    &lt;title&gt;My First Page&lt;/title&gt;
+&lt;/head&gt;
+&lt;body&gt;
+    &lt;h1&gt;Hello World!&lt;/h1&gt;
+    &lt;p&gt;This is a paragraph.&lt;/p&gt;
+&lt;/body&gt;
+&lt;/html&gt;</code></pre>
+                            <h4>Exercise: Create a simple page with a heading and paragraph</h4>
+                        `
+                    },
+                    css: {
+                        title: 'CSS Styling',
+                        content: `
+                            <h4>Introduction to CSS</h4>
+                            <p>CSS (Cascading Style Sheets) is used to style and layout web pages.</p>
+                            <pre><code class="language-css">body {
+    font-family: Arial, sans-serif;
+    margin: 0;
+    padding: 20px;
+    background-color: #f0f0f0;
+}
+
+h1 {
+    color: #2563eb;
+    text-align: center;
+}</code></pre>
+                        `
+                    },
+                    js: {
+                        title: 'JavaScript Fundamentals',
+                        content: `
+                            <h4>Introduction to JavaScript</h4>
+                            <p>JavaScript makes web pages interactive and dynamic.</p>
+                            <pre><code class="language-javascript">// Simple function
+function greet(name) {
+    return 'Hello, ' + name + '!';
+}
+
+// Event handling
+document.getElementById('myButton').addEventListener('click', function() {
+    alert('Button clicked!');
+});</code></pre>
+                        `
+                    }
+                };
+
+                const lessonData = lessons[lesson];
+                if (lessonData) {
+                    document.getElementById('lessonTitle').textContent = lessonData.title;
+                    document.getElementById('lessonBody').innerHTML = lessonData.content;
+                    document.getElementById('lessonContent').classList.remove('hidden');
+                    Prism.highlightAll();
+                }
+            }
+
+            hideLesson() {
+                document.getElementById('lessonContent').classList.add('hidden');
+            }
+
+            runCode() {
+                const html = document.getElementById('htmlEditor').value;
+                const css = document.getElementById('cssEditor').value;
+                const js = document.getElementById('jsEditor').value;
                 
-                if (lessons.length > 0) {
-                    displayLesson(lessons[0]);
-                }
-            } catch (error) {
-                console.error('Failed to load lessons:', error);
-            }
-        }
-
-        function displayLesson(lesson) {
-            document.querySelector('#learn .grid').classList.add('hidden');
-            elements.lessonContent.classList.remove('hidden');
-            
-            elements.lessonTitle.textContent = lesson.title;
-            elements.lessonText.innerHTML = DOMPurify.sanitize(marked.parse(lesson.content));
-            elements.codeEditor.value = lesson.codeExample || '';
-        }
-
-        // Tools System
-        function showTool(tool) {
-            document.querySelector('#tools .grid').classList.add('hidden');
-            elements.toolContent.classList.remove('hidden');
-            
-            const tools = {
-                json: {
-                    title: 'JSON Formatter',
-                    html: `
-                        <textarea id="jsonInput" placeholder="Paste your JSON here..." class="w-full h-40 glass rounded-lg p-4 text-white placeholder-gray-400 mb-4"></textarea>
-                        <button onclick="formatJSON()" class="w-full btn-primary py-3 rounded-lg mb-4">Format JSON</button>
-                        <div class="bg-black p-4 rounded-lg">
-                            <h4 class="font-semibold mb-2">Formatted JSON:</h4>
-                            <pre id="jsonOutput" class="text-white font-mono text-sm"></pre>
-                        </div>
-                    `
-                },
-                regex: {
-                    title: 'Regex Tester',
-                    html: `
-                        <input type="text" id="regexPattern" placeholder="Regular Expression" class="w-full glass rounded-lg p-3 text-white placeholder-gray-400 mb-2">
-                        <textarea id="regexText" placeholder="Test text..." class="w-full h-32 glass rounded-lg p-4 text-white placeholder-gray-400 mb-4"></textarea>
-                        <button onclick="testRegex()" class="w-full btn-primary py-3 rounded-lg mb-4">Test Regex</button>
-                        <div class="bg-black p-4 rounded-lg">
-                            <h4 class="font-semibold mb-2">Results:</h4>
-                            <div id="regexOutput" class="text-white font-mono text-sm"></div>
-                        </div>
-                    `
-                },
-                base64: {
-                    title: 'Base64 Converter',
-                    html: `
-                        <textarea id="base64Input" placeholder="Enter text to encode/decode..." class="w-full h-32 glass rounded-lg p-4 text-white placeholder-gray-400 mb-4"></textarea>
-                        <div class="flex space-x-4 mb-4">
-                            <button onclick="base64Encode()" class="flex-1 btn-primary py-3 rounded-lg">Encode</button>
-                            <button onclick="base64Decode()" class="flex-1 glass py-3 rounded-lg">Decode</button>
-                        </div>
-                        <div class="bg-black p-4 rounded-lg">
-                            <h4 class="font-semibold mb-2">Result:</h4>
-                            <pre id="base64Output" class="text-white font-mono text-sm"></pre>
-                        </div>
-                    `
-                }
-            };
-            
-            elements.toolTitle.textContent = tools[tool].title;
-            elements.toolInterface.innerHTML = tools[tool].html;
-        }
-
-        function hideTool() {
-            elements.toolContent.classList.add('hidden');
-            document.querySelector('#tools .grid').classList.remove('hidden');
-        }
-
-        async function formatJSON() {
-            const input = document.getElementById('jsonInput').value;
-            try {
-                const response = await fetch('/api/tools/json-format', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ json: input })
-                });
-                const result = await response.json();
-                document.getElementById('jsonOutput').textContent = result.formatted;
-            } catch (error) {
-                document.getElementById('jsonOutput').textContent = 'Error: Invalid JSON';
-            }
-        }
-
-        async function testRegex() {
-            const pattern = document.getElementById('regexPattern').value;
-            const text = document.getElementById('regexText').value;
-            try {
-                const response = await fetch('/api/tools/regex-test', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ pattern, text })
-                });
-                const result = await response.json();
-                document.getElementById('regexOutput').textContent = JSON.stringify(result, null, 2);
-            } catch (error) {
-                document.getElementById('regexOutput').textContent = 'Error: Invalid regex pattern';
-            }
-        }
-
-        async function base64Encode() {
-            const text = document.getElementById('base64Input').value;
-            try {
-                const response = await fetch('/api/tools/base64', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ action: 'encode', text })
-                });
-                const result = await response.json();
-                document.getElementById('base64Output').textContent = result.result;
-            } catch (error) {
-                document.getElementById('base64Output').textContent = 'Error: Encoding failed';
-            }
-        }
-
-        async function base64Decode() {
-            const text = document.getElementById('base64Input').value;
-            try {
-                const response = await fetch('/api/tools/base64', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ action: 'decode', text })
-                });
-                const result = await response.json();
-                document.getElementById('base64Output').textContent = result.result;
-            } catch (error) {
-                document.getElementById('base64Output').textContent = 'Error: Decoding failed';
-            }
-        }
-
-        // AI Functions
-        function setupAI() {
-            elements.generateCode.addEventListener('click', async () => {
-                const prompt = elements.aiPrompt.value;
-                const language = elements.aiLanguage.value;
+                const iframe = document.getElementById('previewFrame');
+                const iframeDoc = iframe.contentDocument || iframe.contentWindow.document;
                 
-                if (!prompt.trim()) {
-                    alert('Please enter a prompt');
-                    return;
-                }
+                iframeDoc.open();
+                iframeDoc.write(`
+                    <!DOCTYPE html>
+                    <html>
+                    <head>
+                        <style>${css}</style>
+                    </head>
+                    <body>${html}
+                        <script>${js}<\/script>
+                    </body>
+                    </html>
+                `);
+                iframeDoc.close();
+            }
 
+            async loadStats() {
                 try {
-                    const token = localStorage.getItem('token');
-                    const response = await fetch('/api/ai/code', {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                            'Authorization': `Bearer ${token}`
-                        },
-                        body: JSON.stringify({ prompt, language })
-                    });
+                    const responses = await Promise.all([
+                        fetch('/api/projects'),
+                        fetch('/api/apis'),
+                        fetch('/api/jobs')
+                    ]);
 
-                    const result = await response.json();
-                    elements.aiOutput.textContent = result.code;
+                    const projects = await responses[0].json();
+                    const apis = await responses[1].json();
+                    const jobs = await responses[2].json();
+
+                    document.getElementById('projectsCount').textContent = projects.length;
+                    document.getElementById('apisCount').textContent = apis.length;
+                    document.getElementById('jobsCount').textContent = jobs.length;
                 } catch (error) {
-                    alert('Failed to generate code: ' + error.message);
+                    console.error('Failed to load stats');
                 }
-            });
+            }
 
-            elements.explainCode.addEventListener('click', async () => {
-                const code = elements.codeToExplain.value;
-                
-                if (!code.trim()) {
-                    alert('Please enter some code');
-                    return;
-                }
-
-                try {
-                    const token = localStorage.getItem('token');
-                    const response = await fetch('/api/ai/explain', {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                            'Authorization': `Bearer ${token}`
-                        },
-                        body: JSON.stringify({ code })
-                    });
-
-                    const result = await response.json();
-                    elements.aiOutput.textContent = result.explanation;
-                } catch (error) {
-                    alert('Failed to explain code: ' + error.message);
-                }
-            });
-
-            elements.copyAiOutput.addEventListener('click', () => {
-                navigator.clipboard.writeText(elements.aiOutput.textContent);
-                alert('Copied to clipboard!');
-            });
-
-            elements.clearAiOutput.addEventListener('click', () => {
-                elements.aiOutput.textContent = '';
-            });
-        }
-
-        // API Testing
-        function setupAPITesting() {
-            elements.testApi.addEventListener('click', async () => {
-                const endpoint = elements.apiEndpoint.value;
-                const method = elements.apiMethod.value;
-                const body = elements.apiBody.value;
-                
-                if (!endpoint) {
-                    alert('Please enter an API endpoint');
-                    return;
-                }
-
-                try {
-                    const token = localStorage.getItem('token');
-                    const response = await fetch('/api/apis/test', {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                            'Authorization': `Bearer ${token}`
-                        },
-                        body: JSON.stringify({
-                            url: endpoint,
-                            method,
-                            body: body ? JSON.parse(body) : null
-                        })
-                    });
-
-                    const result = await response.json();
-                    elements.apiResponse.textContent = JSON.stringify(result, null, 2);
-                } catch (error) {
-                    elements.apiResponse.textContent = 'Error: ' + error.message;
-                }
-            });
-        }
-
-        // Chat System
-        function setupChat() {
-            elements.channelBtns.forEach(btn => {
-                btn.addEventListener('click', () => {
-                    const channel = btn.dataset.channel;
-                    joinChannel(channel);
-                    
-                    // Update active channel UI
-                    elements.channelBtns.forEach(b => b.classList.remove('channel-active'));
-                    btn.classList.add('channel-active');
-                });
-            });
-
-            elements.messageInput.addEventListener('input', () => {
-                if (currentChannel) {
-                    socket.emit('user-typing', {
-                        channel: currentChannel,
-                        user: currentUser.fullName,
-                        isTyping: true
-                    });
-
-                    clearTimeout(typingTimeout);
-                    typingTimeout = setTimeout(() => {
-                        socket.emit('user-typing', {
-                            channel: currentChannel,
-                            user: currentUser.fullName,
-                            isTyping: false
-                        });
-                    }, 1000);
-                }
-            });
-
-            elements.sendMessage.addEventListener('click', sendMessage);
-            elements.messageInput.addEventListener('keypress', (e) => {
-                if (e.key === 'Enter') {
-                    sendMessage();
-                }
-            });
-        }
-
-        function initializeSocket() {
-            if (!currentUser) return;
-
-            socket = io();
-            
-            socket.on('connect', () => {
-                console.log('Connected to server');
-            });
-
-            socket.on('new-message', (message) => {
-                displayMessage(message);
-            });
-
-            socket.on('user-typing', (data) => {
-                if (data.isTyping) {
-                    elements.typingUsers.textContent = data.user;
-                    elements.typingIndicator.classList.remove('hidden');
+            setupTheme() {
+                if (localStorage.theme === 'dark' || (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+                    document.documentElement.classList.add('dark');
                 } else {
-                    elements.typingIndicator.classList.add('hidden');
+                    document.documentElement.classList.remove('dark');
                 }
-            });
-
-            // Enable chat input
-            elements.messageInput.disabled = false;
-            elements.sendMessage.disabled = false;
-        }
-
-        async function joinChannel(channel) {
-            currentChannel = channel;
-            elements.currentChannel.innerHTML = `<i class="fas fa-hashtag mr-2"></i>${channel}`;
-            
-            // Set channel description
-            const descriptions = {
-                general: "General discussions about programming and technology",
-                frontend: "HTML, CSS, JavaScript, frameworks, and frontend development",
-                backend: "Server-side programming, databases, APIs, and architecture",
-                ai: "Artificial Intelligence, Machine Learning, and data science"
-            };
-            elements.channelDescription.textContent = descriptions[channel] || "Community discussions";
-            
-            elements.messagesContainer.innerHTML = '<div class="text-center text-gray-400 py-8">Loading messages...</div>';
-
-            if (socket) {
-                socket.emit('join-channel', channel);
             }
 
-            // Load previous messages
-            try {
-                const token = localStorage.getItem('token');
-                const response = await fetch(`/api/messages/${channel}`, {
-                    headers: { 'Authorization': `Bearer ${token}` }
+            toggleTheme() {
+                document.documentElement.classList.toggle('dark');
+                localStorage.theme = document.documentElement.classList.contains('dark') ? 'dark' : 'light';
+            }
+
+            closeModals() {
+                document.querySelectorAll('[id$="Modal"]').forEach(modal => {
+                    modal.classList.add('hidden');
                 });
-                const messages = await response.json();
-                
-                elements.messagesContainer.innerHTML = '';
-                messages.forEach(displayMessage);
-            } catch (error) {
-                console.error('Failed to load messages:', error);
+            }
+
+            escapeHtml(unsafe) {
+                if (!unsafe) return '';
+                return unsafe
+                    .replace(/&/g, "&amp;")
+                    .replace(/</g, "&lt;")
+                    .replace(/>/g, "&gt;")
+                    .replace(/"/g, "&quot;")
+                    .replace(/'/g, "&#039;");
             }
         }
 
-        function displayMessage(message) {
-            const messageDiv = document.createElement('div');
-            const isSelf = currentUser && message.user._id === currentUser._id;
-            
-            messageDiv.className = `flex space-x-3 ${isSelf ? 'justify-end' : ''}`;
-            messageDiv.innerHTML = `
-                ${!isSelf ? `<img src="${message.user.avatar || 'https://via.placeholder.com/32'}" 
-                     alt="${message.user.fullName}" 
-                     class="w-8 h-8 rounded-full flex-shrink-0">` : ''}
-                <div class="max-w-[70%]">
-                    ${!isSelf ? `<div class="flex items-center space-x-2 mb-1">
-                        <span class="font-semibold text-sm">${message.user.fullName}</span>
-                        <span class="text-xs text-gray-400">${new Date(message.timestamp).toLocaleTimeString()}</span>
-                    </div>` : ''}
-                    <div class="${isSelf ? 'message-self' : 'message-other'} p-3 rounded-2xl ${isSelf ? 'rounded-br-none' : 'rounded-bl-none'}">
-                        ${DOMPurify.sanitize(message.content)}
-                    </div>
-                    ${isSelf ? `<div class="text-right mt-1">
-                        <span class="text-xs text-gray-400">${new Date(message.timestamp).toLocaleTimeString()}</span>
-                    </div>` : ''}
-                </div>
-                ${isSelf ? `<img src="${currentUser.avatar || 'https://via.placeholder.com/32'}" 
-                     alt="${currentUser.fullName}" 
-                     class="w-8 h-8 rounded-full flex-shrink-0">` : ''}
-            `;
-            elements.messagesContainer.appendChild(messageDiv);
-            elements.messagesContainer.scrollTop = elements.messagesContainer.scrollHeight;
-        }
-
-        function sendMessage() {
-            const content = elements.messageInput.value.trim();
-            if (!content || !currentChannel || !socket) return;
-
-            socket.emit('send-message', {
-                channel: currentChannel,
-                userId: currentUser._id,
-                content: content,
-                type: 'text'
-            });
-
-            elements.messageInput.value = '';
-        }
-
-        // Initialize everything when DOM is loaded
+        // Initialize the app when DOM is loaded
         document.addEventListener('DOMContentLoaded', () => {
-            setupNavigation();
-            setupAuth();
-            setupLearning();
-            setupAI();
-            setupAPITesting();
-            setupChat();
-            checkAuth();
-            loadHomeStats();
+            new DevsArenaApp();
         });
     </script>
 </body>
-</html>
+    </html>
