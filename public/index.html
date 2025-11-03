@@ -3,11 +3,10 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>DEVS ARENA - Developer Collaboration Platform</title>
-    <meta name="description" content="Real-time developer platform for coding, collaboration, and learning">
+    <title>DEVS ARENA - Professional Developer Platform</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
     <script>
         tailwind.config = {
             theme: {
@@ -17,75 +16,96 @@
                         secondary: '#7c3aed',
                         dark: '#1e293b',
                         darker: '#0f172a'
-                    },
-                    fontFamily: {
-                        sans: ['Inter', 'sans-serif']
                     }
                 }
-            },
-            darkMode: 'class'
+            }
         }
     </script>
     <style>
-        .code-editor { font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace; }
-        .gradient-bg { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); }
-        .glass-effect { backdrop-filter: blur(10px); background: rgba(255, 255, 255, 0.1); }
-        .cursor-pointer { cursor: pointer; }
-        .transition-all { transition: all 0.3s ease; }
-        .hover-lift:hover { transform: translateY(-2px); }
-        .shadow-glow { box-shadow: 0 0 20px rgba(59, 130, 246, 0.3); }
+        .glass-effect {
+            backdrop-filter: blur(10px);
+            background: rgba(255, 255, 255, 0.1);
+        }
+        .gradient-bg {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }
+        .code-editor {
+            font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+        }
+        .notification {
+            transition: all 0.3s ease;
+        }
+        .hover-lift:hover {
+            transform: translateY(-2px);
+        }
     </style>
 </head>
-<body class="bg-gray-50 dark:bg-darker font-sans">
+<body class="bg-gray-50 min-h-screen">
+    <!-- Notification System -->
+    <div id="notification" class="fixed top-4 right-4 z-50 hidden notification">
+        <div class="bg-white rounded-lg shadow-lg border-l-4 p-4 max-w-sm">
+            <div class="flex items-center space-x-3">
+                <i id="notificationIcon" class="text-xl"></i>
+                <div>
+                    <h4 id="notificationTitle" class="font-semibold"></h4>
+                    <p id="notificationMessage" class="text-sm text-gray-600"></p>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- Navigation -->
-    <nav class="bg-white dark:bg-dark shadow-lg sticky top-0 z-50">
+    <nav class="bg-white shadow-lg sticky top-0 z-40">
         <div class="max-w-7xl mx-auto px-4">
             <div class="flex justify-between items-center h-16">
                 <!-- Logo -->
                 <div class="flex items-center space-x-3">
                     <div class="w-10 h-10 bg-gradient-to-r from-primary to-secondary rounded-lg flex items-center justify-center">
-                        <span class="text-white font-bold text-lg">DA</span>
+                        <i class="fas fa-code text-white text-lg"></i>
                     </div>
-                    <span class="text-xl font-bold text-gray-800 dark:text-white">DEVS ARENA</span>
+                    <span class="text-xl font-bold text-gray-800">DEVS ARENA</span>
                 </div>
 
                 <!-- Navigation Links -->
                 <div class="hidden md:flex items-center space-x-8">
-                    <a href="#home" class="nav-link">Home</a>
-                    <a href="#learn" class="nav-link">Learn</a>
-                    <a href="#community" class="nav-link">Community</a>
-                    <a href="#apis" class="nav-link">Free APIs</a>
-                    <a href="#ai" class="nav-link">AI Assistant</a>
-                    <a href="#projects" class="nav-link">Projects</a>
-                    <a href="#collaborate" class="nav-link">Collaborate</a>
-                    <a href="#jobs" class="nav-link">Jobs</a>
+                    <a href="#home" class="text-gray-600 hover:text-primary font-medium transition-colors">Home</a>
+                    <a href="#learn" class="text-gray-600 hover:text-primary font-medium transition-colors">Learn</a>
+                    <a href="#projects" class="text-gray-600 hover:text-primary font-medium transition-colors">Projects</a>
+                    <a href="#community" class="text-gray-600 hover:text-primary font-medium transition-colors">Community</a>
+                    <a href="#ai" class="text-gray-600 hover:text-primary font-medium transition-colors">AI Assistant</a>
                 </div>
 
-                <!-- Right Section -->
+                <!-- Auth Section -->
                 <div class="flex items-center space-x-4">
-                    <button id="themeToggle" class="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700">
-                        <svg class="w-5 h-5 hidden dark:block" fill="currentColor" viewBox="0 0 20 20">
-                            <path fill-rule="evenodd" d="M10 2a1 1 0 011 1v1a1 1 0 11-2 0V3a1 1 0 011-1zm4 8a4 4 0 11-8 0 4 4 0 018 0zm-.464 4.95l.707.707a1 1 0 001.414-1.414l-.707-.707a1 1 0 00-1.414 1.414zm2.12-10.607a1 1 0 010 1.414l-.706.707a1 1 0 11-1.414-1.414l.707-.707a1 1 0 011.414 0zM17 11a1 1 0 100-2h-1a1 1 0 100 2h1zm-7 4a1 1 0 011 1v1a1 1 0 11-2 0v-1a1 1 0 011-1zM5.05 6.464A1 1 0 106.465 5.05l-.708-.707a1 1 0 00-1.414 1.414l.707.707zm1.414 8.486l-.707.707a1 1 0 01-1.414-1.414l.707-.707a1 1 0 011.414 1.414zM4 11a1 1 0 100-2H3a1 1 0 000 2h1z" clip-rule="evenodd"></path>
-                        </svg>
-                        <svg class="w-5 h-5 dark:hidden" fill="currentColor" viewBox="0 0 20 20">
-                            <path d="M17.293 13.293A8 8 0 016.707 2.707a8.001 8.001 0 1010.586 10.586z"></path>
-                        </svg>
+                    <button id="themeToggle" class="p-2 rounded-lg hover:bg-gray-100 transition-colors">
+                        <i class="fas fa-moon text-gray-600"></i>
                     </button>
 
                     <div id="authSection" class="flex items-center space-x-3">
-                        <button onclick="showAuthModal('login')" class="btn-secondary">Login</button>
-                        <button onclick="showAuthModal('register')" class="btn-primary">Sign Up</button>
+                        <button onclick="showAuthModal('login')" class="px-4 py-2 text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-50 font-medium transition-colors">
+                            Login
+                        </button>
+                        <button onclick="showAuthModal('register')" class="px-4 py-2 bg-primary text-white rounded-lg hover:bg-blue-700 font-medium transition-colors">
+                            Sign Up
+                        </button>
                     </div>
 
-                    <div id="userSection" class="hidden flex items-center space-x-3">
+                    <div id="userSection" class="hidden flex items-center space-x-4">
                         <div class="relative group">
-                            <img id="userAvatar" class="w-8 h-8 rounded-full cursor-pointer" src="" alt="Avatar">
-                            <div class="absolute right-0 mt-2 w-48 bg-white dark:bg-dark rounded-lg shadow-xl hidden group-hover:block">
-                                <a href="#profile" class="block px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-700">Profile</a>
-                                <a href="#settings" class="block px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-700">Settings</a>
-                                <button onclick="logout()" class="block w-full text-left px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-700 text-red-600">Logout</button>
+                            <img id="userAvatar" class="w-8 h-8 rounded-full cursor-pointer border-2 border-transparent hover:border-primary transition-colors" src="" alt="Profile">
+                            <div class="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-xl border hidden group-hover:block">
+                                <a href="#profile" class="block px-4 py-2 hover:bg-gray-50 transition-colors">
+                                    <i class="fas fa-user mr-2"></i>Profile
+                                </a>
+                                <a href="#settings" class="block px-4 py-2 hover:bg-gray-50 transition-colors">
+                                    <i class="fas fa-cog mr-2"></i>Settings
+                                </a>
+                                <button onclick="logout()" class="block w-full text-left px-4 py-2 hover:bg-gray-50 text-red-600 transition-colors">
+                                    <i class="fas fa-sign-out-alt mr-2"></i>Logout
+                                </button>
                             </div>
                         </div>
+                        <span id="userName" class="font-medium text-gray-700"></span>
                     </div>
                 </div>
             </div>
@@ -97,157 +117,186 @@
         <!-- Hero Section -->
         <section id="home" class="gradient-bg text-white py-20">
             <div class="max-w-7xl mx-auto px-4 text-center">
-                <h1 class="text-5xl md:text-7xl font-bold mb-6">DEVS ARENA</h1>
-                <p class="text-xl md:text-2xl mb-8 opacity-90">Code, Collaborate, Create - All in One Platform</p>
+                <h1 class="text-5xl md:text-6xl font-bold mb-6">Build, Learn & Collaborate</h1>
+                <p class="text-xl md:text-2xl mb-8 opacity-90">The ultimate platform for developers to code together, learn new skills, and grow their careers.</p>
                 <div class="flex flex-col sm:flex-row gap-4 justify-center items-center">
-                    <button onclick="showAuthModal('register')" class="bg-white text-primary px-8 py-3 rounded-lg font-semibold hover-lift shadow-lg text-lg">
-                        Start Coding Free
+                    <button onclick="showAuthModal('register')" class="bg-white text-primary px-8 py-4 rounded-lg font-semibold hover-lift shadow-lg text-lg transition-all">
+                        <i class="fas fa-rocket mr-2"></i>Start Coding Free
                     </button>
-                    <button onclick="scrollToSection('features')" class="border-2 border-white text-white px-8 py-3 rounded-lg font-semibold hover-lift text-lg">
-                        Explore Features
+                    <button onclick="scrollToSection('features')" class="border-2 border-white text-white px-8 py-4 rounded-lg font-semibold hover-lift text-lg transition-all">
+                        <i class="fas fa-eye mr-2"></i>Explore Features
                     </button>
                 </div>
             </div>
         </section>
 
-        <!-- Features Grid -->
-        <section id="features" class="py-20 bg-white dark:bg-dark">
+        <!-- Features Section -->
+        <section id="features" class="py-20 bg-white">
             <div class="max-w-7xl mx-auto px-4">
-                <h2 class="text-4xl font-bold text-center mb-12 text-gray-800 dark:text-white">Everything You Need to Level Up</h2>
-                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-                    <!-- Feature Cards -->
-                    <div class="feature-card">
-                        <div class="w-12 h-12 bg-blue-100 dark:bg-blue-900 rounded-lg flex items-center justify-center mb-4">
-                            <svg class="w-6 h-6 text-blue-600 dark:text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4"></path>
-                            </svg>
+                <h2 class="text-4xl font-bold text-center mb-4 text-gray-800">Everything You Need to Succeed</h2>
+                <p class="text-xl text-center text-gray-600 mb-12">Professional tools for modern developers</p>
+                
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
+                    <!-- Feature 1 -->
+                    <div class="bg-gray-50 rounded-xl p-6 hover-lift transition-all border border-gray-200">
+                        <div class="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center mb-4">
+                            <i class="fas fa-users text-blue-600 text-xl"></i>
                         </div>
-                        <h3 class="text-xl font-semibold mb-2">Real-time Coding</h3>
-                        <p class="text-gray-600 dark:text-gray-300">Collaborate with multiple developers in real-time with live cursors and code synchronization.</p>
+                        <h3 class="text-xl font-semibold mb-3">Real-time Collaboration</h3>
+                        <p class="text-gray-600">Code together with multiple developers in real-time. See live cursors, chat while coding, and build together.</p>
                     </div>
 
-                    <div class="feature-card">
-                        <div class="w-12 h-12 bg-green-100 dark:bg-green-900 rounded-lg flex items-center justify-center mb-4">
-                            <svg class="w-6 h-6 text-green-600 dark:text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"></path>
-                            </svg>
+                    <!-- Feature 2 -->
+                    <div class="bg-gray-50 rounded-xl p-6 hover-lift transition-all border border-gray-200">
+                        <div class="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center mb-4">
+                            <i class="fas fa-graduation-cap text-green-600 text-xl"></i>
                         </div>
-                        <h3 class="text-xl font-semibold mb-2">Learning Hub</h3>
-                        <p class="text-gray-600 dark:text-gray-300">Comprehensive tutorials from HTML to advanced frameworks with interactive exercises.</p>
+                        <h3 class="text-xl font-semibold mb-3">Interactive Learning</h3>
+                        <p class="text-gray-600">Master programming with hands-on lessons, coding challenges, and personalized learning paths.</p>
                     </div>
 
-                    <div class="feature-card">
-                        <div class="w-12 h-12 bg-purple-100 dark:bg-purple-900 rounded-lg flex items-center justify-center mb-4">
-                            <svg class="w-6 h-6 text-purple-600 dark:text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path>
-                            </svg>
+                    <!-- Feature 3 -->
+                    <div class="bg-gray-50 rounded-xl p-6 hover-lift transition-all border border-gray-200">
+                        <div class="w-12 h-12 bg-purple-100 rounded-lg flex items-center justify-center mb-4">
+                            <i class="fas fa-robot text-purple-600 text-xl"></i>
                         </div>
-                        <h3 class="text-xl font-semibold mb-2">AI Assistant</h3>
-                        <p class="text-gray-600 dark:text-gray-300">Get instant help with coding, debugging, and learning from our advanced AI assistant.</p>
+                        <h3 class="text-xl font-semibold mb-3">AI Coding Assistant</h3>
+                        <p class="text-gray-600">Get instant help with debugging, code explanations, and best practices from our AI assistant.</p>
                     </div>
                 </div>
             </div>
         </section>
 
-        <!-- Real-time Collaboration Demo -->
-        <section id="collaborate" class="py-20 bg-gray-100 dark:bg-gray-800">
+        <!-- Live Demo Section -->
+        <section class="py-20 bg-gray-100">
             <div class="max-w-7xl mx-auto px-4">
-                <h2 class="text-4xl font-bold text-center mb-12 text-gray-800 dark:text-white">Real-time Collaboration</h2>
-                <div class="bg-white dark:bg-dark rounded-xl shadow-xl p-6">
-                    <div class="flex space-x-4 mb-4">
-                        <button class="px-4 py-2 bg-primary text-white rounded-lg">JavaScript</button>
-                        <button class="px-4 py-2 bg-gray-200 dark:bg-gray-700 rounded-lg">Python</button>
-                        <button class="px-4 py-2 bg-gray-200 dark:bg-gray-700 rounded-lg">HTML</button>
-                    </div>
-                    <div class="code-editor bg-gray-900 text-gray-100 rounded-lg p-4 min-h-[400px]">
-                        <pre><code class="language-javascript">
-// Real-time collaborative code editor
-function welcomeToDevsArena() {
-    const features = [
-        "Real-time coding",
-        "AI Assistance", 
-        "Project Sharing",
-        "Code Execution",
-        "Git Integration"
-    ];
-    
-    features.forEach(feature => {
-        console.log(`🎯 ${feature}`);
-    });
-    
-    return "Start collaborating now!";
-}
-                        </code></pre>
-                    </div>
-                    <div class="flex justify-between items-center mt-4">
-                        <div class="flex space-x-2">
+                <h2 class="text-4xl font-bold text-center mb-12 text-gray-800">Live Code Collaboration</h2>
+                
+                <div class="bg-white rounded-xl shadow-lg overflow-hidden">
+                    <div class="border-b border-gray-200">
+                        <div class="flex space-x-2 p-4">
                             <div class="w-3 h-3 bg-red-500 rounded-full"></div>
                             <div class="w-3 h-3 bg-yellow-500 rounded-full"></div>
                             <div class="w-3 h-3 bg-green-500 rounded-full"></div>
                         </div>
-                        <button class="px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700">
-                            Run Code
-                        </button>
+                    </div>
+                    
+                    <div class="p-6">
+                        <div class="code-editor bg-gray-900 text-gray-100 rounded-lg p-6 overflow-x-auto">
+                            <pre><code class="language-javascript text-sm">
+// Welcome to DEVS ARENA - Real-time Collaboration
+function collaborativeCoding() {
+    const features = [
+        "Real-time code editing",
+        "Live chat with teammates", 
+        "AI-powered assistance",
+        "Project sharing",
+        "Code execution"
+    ];
+    
+    console.log("🚀 Available Features:");
+    features.forEach(feature => {
+        console.log(`✅ ${feature}`);
+    });
+    
+    return "Start collaborating now!";
+}
+
+// Try editing this code with your team
+collaborativeCoding();
+                            </code></pre>
+                        </div>
+                        
+                        <div class="flex justify-between items-center mt-4">
+                            <div class="flex items-center space-x-2 text-sm text-gray-600">
+                                <i class="fas fa-users"></i>
+                                <span id="onlineCount">0 users online</span>
+                            </div>
+                            <div class="flex space-x-3">
+                                <button class="px-4 py-2 bg-gray-200 rounded-lg hover:bg-gray-300 transition-colors">
+                                    <i class="fas fa-copy mr-2"></i>Copy
+                                </button>
+                                <button class="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors">
+                                    <i class="fas fa-play mr-2"></i>Run Code
+                                </button>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
         </section>
 
         <!-- AI Assistant Section -->
-        <section id="ai" class="py-20 bg-white dark:bg-dark">
+        <section id="ai" class="py-20 bg-white">
             <div class="max-w-4xl mx-auto px-4">
-                <h2 class="text-4xl font-bold text-center mb-12 text-gray-800 dark:text-white">AI Coding Assistant</h2>
-                <div class="bg-gray-50 dark:bg-gray-800 rounded-xl shadow-lg p-6">
-                    <div id="aiChat" class="h-96 overflow-y-auto mb-4 space-y-4">
-                        <div class="ai-message bg-white dark:bg-gray-700 p-4 rounded-lg">
-                            <strong>AI Assistant:</strong> Hello! I'm here to help with your coding questions. What would you like to know?
+                <h2 class="text-4xl font-bold text-center mb-4 text-gray-800">AI Coding Assistant</h2>
+                <p class="text-xl text-center text-gray-600 mb-12">Get instant help with your code</p>
+                
+                <div class="bg-gray-50 rounded-xl shadow-lg p-6">
+                    <div id="aiChat" class="h-80 overflow-y-auto mb-4 space-y-4 p-4 bg-white rounded-lg">
+                        <div class="ai-message bg-blue-50 p-4 rounded-lg">
+                            <div class="flex items-center space-x-2 mb-2">
+                                <i class="fas fa-robot text-blue-600"></i>
+                                <strong class="text-blue-800">AI Assistant</strong>
+                            </div>
+                            <p class="text-gray-700">Hello! I'm your AI coding assistant. I can help you with programming questions, code explanations, debugging, and learning resources. What would you like to know?</p>
                         </div>
                     </div>
+                    
                     <div class="flex space-x-4">
                         <input type="text" id="aiInput" placeholder="Ask me anything about coding..." 
-                               class="flex-1 px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary">
-                        <button onclick="sendToAI()" class="px-6 py-2 bg-primary text-white rounded-lg hover:bg-blue-700">
-                            Send
+                               class="flex-1 px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent">
+                        <button onclick="sendToAI()" class="px-6 py-3 bg-primary text-white rounded-lg hover:bg-blue-700 transition-colors font-semibold">
+                            <i class="fas fa-paper-plane mr-2"></i>Send
                         </button>
                     </div>
                 </div>
             </div>
         </section>
+
+        <!-- Community Projects -->
+        <section id="projects" class="py-20 bg-gray-100">
+            <div class="max-w-7xl mx-auto px-4">
+                <h2 class="text-4xl font-bold text-center mb-4 text-gray-800">Community Projects</h2>
+                <p class="text-xl text-center text-gray-600 mb-12">Explore projects built by our developers</p>
+                
+                <div id="projectsGrid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    <!-- Projects will be loaded here -->
+                </div>
+            </div>
+        </section>
     </main>
 
-    <!-- Auth Modals -->
-    <div id="authModal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50">
-        <div class="bg-white dark:bg-dark rounded-xl p-8 max-w-md w-full mx-4">
+    <!-- Auth Modal -->
+    <div id="authModal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50 p-4">
+        <div class="bg-white rounded-xl p-8 max-w-md w-full mx-auto">
             <div class="flex justify-between items-center mb-6">
-                <h3 id="authTitle" class="text-2xl font-bold">Login</h3>
-                <button onclick="hideAuthModal()" class="text-gray-500 hover:text-gray-700">✕</button>
+                <h3 id="authTitle" class="text-2xl font-bold text-gray-800">Login to DEVS ARENA</h3>
+                <button onclick="hideAuthModal()" class="text-gray-500 hover:text-gray-700 transition-colors">
+                    <i class="fas fa-times text-xl"></i>
+                </button>
             </div>
             
             <form id="authForm" class="space-y-4">
                 <div id="nameField" class="hidden">
-                    <label class="block text-sm font-medium mb-2">Full Name</label>
-                    <input type="text" name="name" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary">
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Full Name</label>
+                    <input type="text" name="name" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all" placeholder="Enter your full name">
                 </div>
                 
                 <div>
-                    <label class="block text-sm font-medium mb-2">Username</label>
-                    <input type="text" name="username" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary" required>
-                </div>
-                
-                <div id="emailField">
-                    <label class="block text-sm font-medium mb-2">Email</label>
-                    <input type="email" name="email" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary" required>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Email or Username</label>
+                    <input type="text" name="email" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all" placeholder="Enter your email or username" required>
                 </div>
                 
                 <div>
-                    <label class="block text-sm font-medium mb-2">Password</label>
-                    <input type="password" name="password" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary" required>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Password</label>
+                    <input type="password" name="password" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all" placeholder="Enter your password" required>
                 </div>
 
                 <div id="skillFields" class="hidden space-y-4">
                     <div>
-                        <label class="block text-sm font-medium mb-2">Skill Level</label>
-                        <select name="skillLevel" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary">
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Skill Level</label>
+                        <select name="skillLevel" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent">
                             <option value="Beginner">Beginner</option>
                             <option value="Intermediate">Intermediate</option>
                             <option value="Expert">Expert</option>
@@ -255,34 +304,38 @@ function welcomeToDevsArena() {
                     </div>
                     
                     <div>
-                        <label class="block text-sm font-medium mb-2">Focus Area</label>
-                        <select name="focusArea" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary">
-                            <option value="Frontend">Frontend</option>
-                            <option value="Backend">Backend</option>
-                            <option value="Full-Stack">Full-Stack</option>
-                            <option value="Mobile">Mobile</option>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Focus Area</label>
+                        <select name="focusArea" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent">
+                            <option value="Frontend">Frontend Development</option>
+                            <option value="Backend">Backend Development</option>
+                            <option value="Full-Stack">Full-Stack Development</option>
+                            <option value="Mobile">Mobile Development</option>
                             <option value="Data Science">Data Science</option>
+                            <option value="DevOps">DevOps</option>
                         </select>
+                    </div>
+
+                    <div class="flex items-center space-x-2">
+                        <input type="checkbox" name="isStudent" class="rounded border-gray-300 text-primary focus:ring-primary">
+                        <label class="text-sm text-gray-700">I am a student</label>
                     </div>
                 </div>
 
-                <button type="submit" class="w-full bg-primary text-white py-3 rounded-lg font-semibold hover:bg-blue-700">
-                    Continue
+                <button type="submit" class="w-full bg-primary text-white py-3 rounded-lg font-semibold hover:bg-blue-700 transition-colors focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2">
+                    <span id="authButtonText">Login to Account</span>
                 </button>
             </form>
 
             <div class="mt-6">
-                <button onclick="githubAuth()" class="w-full bg-gray-800 text-white py-3 rounded-lg font-semibold hover:bg-gray-900 flex items-center justify-center space-x-2">
-                    <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
-                        <path fill-rule="evenodd" d="M10 0C4.477 0 0 4.484 0 10.017c0 4.425 2.865 8.18 6.839 9.504.5.092.682-.217.682-.483 0-.237-.008-.868-.013-1.703-2.782.605-3.369-1.343-3.369-1.343-.454-1.158-1.11-1.466-1.11-1.466-.908-.62.069-.608.069-.608 1.003.07 1.531 1.032 1.531 1.032.892 1.53 2.341 1.088 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.113-4.555-4.951 0-1.093.39-1.988 1.029-2.688-.103-.253-.446-1.272.098-2.65 0 0 .84-.27 2.75 1.026A9.564 9.564 0 0110 4.844c.85.004 1.705.115 2.504.337 1.909-1.296 2.747-1.027 2.747-1.027.546 1.379.203 2.398.1 2.651.64.7 1.028 1.595 1.028 2.688 0 3.848-2.339 4.695-4.566 4.942.359.31.678.921.678 1.856 0 1.338-.012 2.419-.012 2.747 0 .268.18.58.688.482A10.019 10.019 0 0020 10.017C20 4.484 15.522 0 10 0z" clip-rule="evenodd"></path>
-                    </svg>
+                <button onclick="githubAuth()" class="w-full bg-gray-800 text-white py-3 rounded-lg font-semibold hover:bg-gray-900 transition-colors flex items-center justify-center space-x-2">
+                    <i class="fab fa-github"></i>
                     <span>Continue with GitHub</span>
                 </button>
             </div>
 
-            <p id="authSwitch" class="text-center mt-4">
+            <p id="authSwitch" class="text-center mt-4 text-gray-600">
                 Don't have an account? 
-                <button onclick="switchAuthMode('register')" class="text-primary hover:underline">Sign up</button>
+                <button onclick="switchAuthMode('register')" class="text-primary hover:underline font-medium">Sign up now</button>
             </p>
         </div>
     </div>
@@ -293,18 +346,22 @@ function welcomeToDevsArena() {
         let socket = null;
         let currentAuthMode = 'login';
 
-        // DOM Ready
+        // Initialize application
         document.addEventListener('DOMContentLoaded', function() {
             initializeApp();
-            checkAuthStatus();
+            loadProjects();
         });
 
-        // Initialize Application
-        function initializeApp() {
+        async function initializeApp() {
+            // Check authentication status
+            await checkAuthStatus();
+            
             // Initialize Socket.io
             socket = io();
-            
-            // Socket event handlers
+            setupSocketListeners();
+        }
+
+        function setupSocketListeners() {
             socket.on('connect', () => {
                 console.log('Connected to server');
                 if (currentUser) {
@@ -312,20 +369,17 @@ function welcomeToDevsArena() {
                 }
             });
 
-            socket.on('new_message', handleNewMessage);
-            socket.on('code_update', handleCodeUpdate);
-            socket.on('users_online', updateOnlineUsers);
+            socket.on('online_users', (users) => {
+                document.getElementById('onlineCount').textContent = `${users.length} users online`;
+            });
 
-            // Theme handling
-            const savedTheme = localStorage.getItem('theme') || 'light';
-            document.documentElement.classList.toggle('dark', savedTheme === 'dark');
-            
-            // Event listeners
-            document.getElementById('themeToggle').addEventListener('click', toggleTheme);
-            document.getElementById('authForm').addEventListener('submit', handleAuthSubmit);
+            socket.on('new_message', (message) => {
+                // Handle new chat messages
+                console.log('New message:', message);
+            });
         }
 
-        // Authentication Functions
+        // Authentication functions
         function showAuthModal(mode) {
             currentAuthMode = mode;
             const modal = document.getElementById('authModal');
@@ -333,15 +387,18 @@ function welcomeToDevsArena() {
             const switchText = document.getElementById('authSwitch');
             const nameField = document.getElementById('nameField');
             const skillFields = document.getElementById('skillFields');
+            const buttonText = document.getElementById('authButtonText');
 
             if (mode === 'register') {
-                title.textContent = 'Create Account';
-                switchText.innerHTML = 'Already have an account? <button onclick="switchAuthMode(\'login\')" class="text-primary hover:underline">Login</button>';
+                title.textContent = 'Join DEVS ARENA';
+                buttonText.textContent = 'Create Account';
+                switchText.innerHTML = 'Already have an account? <button onclick="switchAuthMode(\'login\')" class="text-primary hover:underline font-medium">Login here</button>';
                 nameField.classList.remove('hidden');
                 skillFields.classList.remove('hidden');
             } else {
-                title.textContent = 'Login';
-                switchText.innerHTML = 'Don\'t have an account? <button onclick="switchAuthMode(\'register\')" class="text-primary hover:underline">Sign up</button>';
+                title.textContent = 'Login to DEVS ARENA';
+                buttonText.textContent = 'Login to Account';
+                switchText.innerHTML = 'Don\'t have an account? <button onclick="switchAuthMode(\'register\')" class="text-primary hover:underline font-medium">Sign up now</button>';
                 nameField.classList.add('hidden');
                 skillFields.classList.add('hidden');
             }
@@ -353,6 +410,7 @@ function welcomeToDevsArena() {
         function hideAuthModal() {
             document.getElementById('authModal').classList.add('hidden');
             document.getElementById('authModal').classList.remove('flex');
+            document.getElementById('authForm').reset();
         }
 
         function switchAuthMode(mode) {
@@ -365,7 +423,7 @@ function welcomeToDevsArena() {
             const data = Object.fromEntries(formData);
 
             try {
-                const endpoint = currentAuthMode === 'register' ? '/auth/register' : '/auth/login';
+                const endpoint = currentAuthMode === 'register' ? '/api/auth/register' : '/api/auth/login';
                 const response = await fetch(endpoint, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
@@ -374,16 +432,20 @@ function welcomeToDevsArena() {
 
                 const result = await response.json();
                 
-                if (response.ok) {
+                if (result.success) {
+                    showNotification('Success', result.message, 'success');
                     currentUser = result.user;
                     updateUIForUser();
                     hideAuthModal();
-                    showNotification(`Welcome ${currentUser.username}!`, 'success');
+                    
+                    if (socket) {
+                        socket.emit('user_online', currentUser.id);
+                    }
                 } else {
-                    showNotification(result.error || 'Authentication failed', 'error');
+                    showNotification('Error', result.message, 'error');
                 }
             } catch (error) {
-                showNotification('Network error. Please try again.', 'error');
+                showNotification('Error', 'Network error. Please try again.', 'error');
             }
         }
 
@@ -393,23 +455,69 @@ function welcomeToDevsArena() {
 
         async function logout() {
             try {
-                await fetch('/auth/logout', { method: 'POST' });
-                currentUser = null;
-                updateUIForUser();
-                showNotification('Logged out successfully', 'success');
+                const response = await fetch('/api/auth/logout', { 
+                    method: 'POST' 
+                });
+                const result = await response.json();
+                
+                if (result.success) {
+                    currentUser = null;
+                    updateUIForUser();
+                    showNotification('Success', 'Logged out successfully', 'success');
+                    if (socket) {
+                        socket.disconnect();
+                    }
+                }
             } catch (error) {
                 console.error('Logout error:', error);
             }
         }
 
-        // AI Assistant Functions
+        async function checkAuthStatus() {
+            try {
+                const response = await fetch('/api/auth/user');
+                const result = await response.json();
+                
+                if (result.success && result.user) {
+                    currentUser = result.user;
+                    updateUIForUser();
+                }
+            } catch (error) {
+                console.error('Auth check error:', error);
+            }
+        }
+
+        function updateUIForUser() {
+            const authSection = document.getElementById('authSection');
+            const userSection = document.getElementById('userSection');
+            const userAvatar = document.getElementById('userAvatar');
+            const userName = document.getElementById('userName');
+
+            if (currentUser) {
+                authSection.classList.add('hidden');
+                userSection.classList.remove('hidden');
+                
+                if (userAvatar) {
+                    userAvatar.src = currentUser.avatar || 'https://ui-avatars.com/api/?name=' + encodeURIComponent(currentUser.name || currentUser.username) + '&background=2563eb&color=fff';
+                }
+                if (userName) {
+                    userName.textContent = currentUser.name || currentUser.username;
+                }
+            } else {
+                authSection.classList.remove('hidden');
+                userSection.classList.add('hidden');
+            }
+        }
+
+        // AI Assistant functions
         async function sendToAI() {
             const input = document.getElementById('aiInput');
             const message = input.value.trim();
             
             if (!message) return;
+            
             if (!currentUser) {
-                showNotification('Please login to use AI assistant', 'error');
+                showNotification('Authentication Required', 'Please login to use the AI assistant', 'warning');
                 return;
             }
 
@@ -424,7 +532,7 @@ function welcomeToDevsArena() {
                 });
 
                 const result = await response.json();
-                if (response.ok) {
+                if (result.success) {
                     addMessageToChat('ai', result.response);
                 } else {
                     addMessageToChat('ai', 'Sorry, I encountered an error. Please try again.');
@@ -437,103 +545,142 @@ function welcomeToDevsArena() {
         function addMessageToChat(sender, message) {
             const chat = document.getElementById('aiChat');
             const messageDiv = document.createElement('div');
-            messageDiv.className = sender === 'user' ? 
-                'user-message bg-blue-100 dark:bg-blue-900 p-4 rounded-lg ml-8' :
-                'ai-message bg-white dark:bg-gray-700 p-4 rounded-lg';
             
-            messageDiv.innerHTML = `<strong>${sender === 'user' ? 'You' : 'AI Assistant'}:</strong> ${message}`;
+            if (sender === 'user') {
+                messageDiv.className = 'user-message bg-gray-100 p-4 rounded-lg ml-8';
+                messageDiv.innerHTML = `
+                    <div class="flex items-center space-x-2 mb-2">
+                        <i class="fas fa-user text-gray-600"></i>
+                        <strong class="text-gray-800">You</strong>
+                    </div>
+                    <p class="text-gray-700">${message}</p>
+                `;
+            } else {
+                messageDiv.className = 'ai-message bg-blue-50 p-4 rounded-lg';
+                messageDiv.innerHTML = `
+                    <div class="flex items-center space-x-2 mb-2">
+                        <i class="fas fa-robot text-blue-600"></i>
+                        <strong class="text-blue-800">AI Assistant</strong>
+                    </div>
+                    <p class="text-gray-700">${message}</p>
+                `;
+            }
+            
             chat.appendChild(messageDiv);
             chat.scrollTop = chat.scrollHeight;
         }
 
-        // Utility Functions
-        function checkAuthStatus() {
-            // Check if user is already logged in (simplified)
-            const userData = localStorage.getItem('currentUser');
-            if (userData) {
-                currentUser = JSON.parse(userData);
-                updateUIForUser();
-            }
-        }
-
-        function updateUIForUser() {
-            const authSection = document.getElementById('authSection');
-            const userSection = document.getElementById('userSection');
-            const userAvatar = document.getElementById('userAvatar');
-
-            if (currentUser) {
-                authSection.classList.add('hidden');
-                userSection.classList.remove('hidden');
-                if (userAvatar) {
-                    userAvatar.src = currentUser.avatar || '/api/placeholder/32/32';
-                    userAvatar.alt = currentUser.username;
-                }
-                localStorage.setItem('currentUser', JSON.stringify(currentUser));
+        // Projects functions
+        async function loadProjects() {
+            try {
+                const response = await fetch('/api/projects');
+                const result = await response.json();
                 
-                // Notify server user is online
-                if (socket) {
-                    socket.emit('user_online', currentUser.id);
+                if (result.success) {
+                    displayProjects(result.projects);
                 }
-            } else {
-                authSection.classList.remove('hidden');
-                userSection.classList.add('hidden');
-                localStorage.removeItem('currentUser');
+            } catch (error) {
+                console.error('Failed to load projects:', error);
             }
         }
 
-        function toggleTheme() {
-            const isDark = document.documentElement.classList.toggle('dark');
-            localStorage.setItem('theme', isDark ? 'dark' : 'light');
+        function displayProjects(projects) {
+            const grid = document.getElementById('projectsGrid');
+            
+            if (!projects || projects.length === 0) {
+                grid.innerHTML = `
+                    <div class="col-span-3 text-center py-12">
+                        <i class="fas fa-folder-open text-4xl text-gray-400 mb-4"></i>
+                        <p class="text-gray-600">No projects yet. Be the first to share your work!</p>
+                    </div>
+                `;
+                return;
+            }
+
+            grid.innerHTML = projects.map(project => `
+                <div class="bg-white rounded-xl shadow-md overflow-hidden hover-lift transition-all border border-gray-200">
+                    <div class="p-6">
+                        <h3 class="text-xl font-semibold mb-2 text-gray-800">${project.title}</h3>
+                        <p class="text-gray-600 mb-4">${project.description || 'No description provided'}</p>
+                        
+                        <div class="flex items-center justify-between mb-4">
+                            <div class="flex items-center space-x-2">
+                                <img src="${project.owner.avatar || 'https://ui-avatars.com/api/?name=' + encodeURIComponent(project.owner.username) + '&background=2563eb&color=fff'}" 
+                                     class="w-6 h-6 rounded-full" alt="${project.owner.username}">
+                                <span class="text-sm text-gray-600">${project.owner.username}</span>
+                            </div>
+                            <div class="flex items-center space-x-2 text-sm text-gray-500">
+                                <i class="fas fa-heart"></i>
+                                <span>${project.likesCount}</span>
+                            </div>
+                        </div>
+                        
+                        <div class="flex flex-wrap gap-2 mb-4">
+                            ${project.tags && project.tags.map(tag => 
+                                `<span class="px-2 py-1 bg-gray-100 text-gray-700 rounded text-xs">${tag}</span>`
+                            ).join('')}
+                        </div>
+                        
+                        <button class="w-full bg-primary text-white py-2 rounded-lg hover:bg-blue-700 transition-colors font-medium">
+                            <i class="fas fa-eye mr-2"></i>View Project
+                        </button>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        // Utility functions
+        function showNotification(title, message, type = 'info') {
+            const notification = document.getElementById('notification');
+            const icon = document.getElementById('notificationIcon');
+            const notifTitle = document.getElementById('notificationTitle');
+            const notifMessage = document.getElementById('notificationMessage');
+
+            // Set icon and colors based on type
+            const styles = {
+                success: { icon: 'fas fa-check-circle', color: 'text-green-500', border: 'border-green-500' },
+                error: { icon: 'fas fa-exclamation-circle', color: 'text-red-500', border: 'border-red-500' },
+                warning: { icon: 'fas fa-exclamation-triangle', color: 'text-yellow-500', border: 'border-yellow-500' },
+                info: { icon: 'fas fa-info-circle', color: 'text-blue-500', border: 'border-blue-500' }
+            };
+
+            const style = styles[type] || styles.info;
+
+            icon.className = `${style.icon} ${style.color}`;
+            notifTitle.textContent = title;
+            notifMessage.textContent = message;
+            notification.className = `fixed top-4 right-4 z-50 notification ${style.border}`;
+
+            notification.classList.remove('hidden');
+            
+            setTimeout(() => {
+                notification.classList.add('hidden');
+            }, 5000);
         }
 
         function scrollToSection(sectionId) {
-            document.getElementById(sectionId)?.scrollIntoView({ behavior: 'smooth' });
+            document.getElementById(sectionId)?.scrollIntoView({ 
+                behavior: 'smooth' 
+            });
         }
 
-        function showNotification(message, type = 'info') {
-            // Simple notification implementation
-            alert(`${type.toUpperCase()}: ${message}`);
-        }
-
-        // Socket Event Handlers
-        function handleNewMessage(message) {
-            // Handle real-time messages
-            console.log('New message:', message);
-        }
-
-        function handleCodeUpdate(update) {
-            // Handle code updates from other users
-            console.log('Code update:', update);
-        }
-
-        function updateOnlineUsers(users) {
-            // Update online users display
-            console.log('Online users:', users);
-        }
-
-        // CSS Classes for reusable components
-        const styles = {
-            navLink: "text-gray-600 dark:text-gray-300 hover:text-primary dark:hover:text-white transition-colors font-medium",
-            btnPrimary: "bg-primary text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors font-medium",
-            btnSecondary: "border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 px-4 py-2 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors font-medium",
-            featureCard: "bg-gray-50 dark:bg-gray-800 p-6 rounded-xl hover-lift transition-all cursor-pointer"
-        };
-
-        // Apply CSS classes
-        document.querySelectorAll('.nav-link').forEach(link => {
-            link.className = styles.navLink;
+        // Event listeners
+        document.getElementById('authForm').addEventListener('submit', handleAuthSubmit);
+        document.getElementById('aiInput').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                sendToAI();
+            }
         });
 
-        document.querySelectorAll('.btn-primary').forEach(btn => {
-            btn.className = styles.btnPrimary;
-        });
-
-        document.querySelectorAll('.btn-secondary').forEach(btn => {
-            btn.className = styles.btnSecondary;
-        });
-
-        document.querySelectorAll('.feature-card').forEach(card => {
-            card.className = styles.featureCard;
+        // Theme toggle (basic implementation)
+        document.getElementById('themeToggle').addEventListener('click', function() {
+            document.documentElement.classList.toggle('dark');
+            const icon = this.querySelector('i');
+            if (document.documentElement.classList.contains('dark')) {
+                icon.className = 'fas fa-sun text-yellow-500';
+            } else {
+                icon.className = 'fas fa-moon text-gray-600';
+            }
         });
     </script>
 </body>
