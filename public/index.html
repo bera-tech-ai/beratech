@@ -3,10 +3,12 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>DEVS ARENA - Professional Developer Platform</title>
+    <title>DEVS ARENA - Real-time Developer Platform</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/github-dark.min.css" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/highlight.min.js"></script>
     <script>
         tailwind.config = {
             theme: {
@@ -22,32 +24,59 @@
         }
     </script>
     <style>
-        .glass-effect {
-            backdrop-filter: blur(10px);
-            background: rgba(255, 255, 255, 0.1);
-        }
         .gradient-bg {
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
         }
-        .code-editor {
-            font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
-        }
-        .notification {
-            transition: all 0.3s ease;
-        }
         .hover-lift:hover {
             transform: translateY(-2px);
+            transition: transform 0.2s ease;
+        }
+        .message-enter {
+            animation: messageSlide 0.3s ease-out;
+        }
+        @keyframes messageSlide {
+            from { transform: translateX(-20px); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
+        }
+        .typing-indicator {
+            display: inline-flex;
+            align-items: center;
+        }
+        .typing-dot {
+            width: 6px;
+            height: 6px;
+            background: #666;
+            border-radius: 50%;
+            margin: 0 1px;
+            animation: typing 1.4s infinite;
+        }
+        .typing-dot:nth-child(2) { animation-delay: 0.2s; }
+        .typing-dot:nth-child(3) { animation-delay: 0.4s; }
+        @keyframes typing {
+            0%, 60%, 100% { transform: translateY(0); }
+            30% { transform: translateY(-5px); }
+        }
+        .code-block {
+            font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+        }
+        .online-indicator {
+            width: 8px;
+            height: 8px;
+            background: #10b981;
+            border-radius: 50%;
+            display: inline-block;
+            margin-right: 5px;
         }
     </style>
 </head>
 <body class="bg-gray-50 min-h-screen">
     <!-- Notification System -->
-    <div id="notification" class="fixed top-4 right-4 z-50 hidden notification">
-        <div class="bg-white rounded-lg shadow-lg border-l-4 p-4 max-w-sm">
+    <div id="notification" class="fixed top-4 right-4 z-50 hidden max-w-sm">
+        <div class="bg-white rounded-lg shadow-lg border-l-4 p-4">
             <div class="flex items-center space-x-3">
                 <i id="notificationIcon" class="text-xl"></i>
                 <div>
-                    <h4 id="notificationTitle" class="font-semibold"></h4>
+                    <h4 id="notificationTitle" class="font-semibold text-gray-800"></h4>
                     <p id="notificationMessage" class="text-sm text-gray-600"></p>
                 </div>
             </div>
@@ -71,41 +100,36 @@
                     <a href="#home" class="text-gray-600 hover:text-primary font-medium transition-colors">Home</a>
                     <a href="#learn" class="text-gray-600 hover:text-primary font-medium transition-colors">Learn</a>
                     <a href="#projects" class="text-gray-600 hover:text-primary font-medium transition-colors">Projects</a>
-                    <a href="#community" class="text-gray-600 hover:text-primary font-medium transition-colors">Community</a>
+                    <a href="#chat" class="text-gray-600 hover:text-primary font-medium transition-colors">Chat</a>
+                    <a href="#collaborate" class="text-gray-600 hover:text-primary font-medium transition-colors">Collaborate</a>
+                    <a href="#apis" class="text-gray-600 hover:text-primary font-medium transition-colors">APIs</a>
                     <a href="#ai" class="text-gray-600 hover:text-primary font-medium transition-colors">AI Assistant</a>
                 </div>
 
-                <!-- Auth Section -->
+                <!-- Online Users & Auth -->
                 <div class="flex items-center space-x-4">
-                    <button id="themeToggle" class="p-2 rounded-lg hover:bg-gray-100 transition-colors">
-                        <i class="fas fa-moon text-gray-600"></i>
-                    </button>
+                    <div id="onlineStatus" class="hidden md:flex items-center space-x-2 text-sm text-gray-600">
+                        <span class="online-indicator"></span>
+                        <span id="onlineCount">0 online</span>
+                    </div>
 
                     <div id="authSection" class="flex items-center space-x-3">
                         <button onclick="showAuthModal('login')" class="px-4 py-2 text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-50 font-medium transition-colors">
                             Login
                         </button>
                         <button onclick="showAuthModal('register')" class="px-4 py-2 bg-primary text-white rounded-lg hover:bg-blue-700 font-medium transition-colors">
-                            Sign Up
+                            Sign Up Free
                         </button>
                     </div>
 
                     <div id="userSection" class="hidden flex items-center space-x-4">
-                        <div class="relative group">
-                            <img id="userAvatar" class="w-8 h-8 rounded-full cursor-pointer border-2 border-transparent hover:border-primary transition-colors" src="" alt="Profile">
-                            <div class="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-xl border hidden group-hover:block">
-                                <a href="#profile" class="block px-4 py-2 hover:bg-gray-50 transition-colors">
-                                    <i class="fas fa-user mr-2"></i>Profile
-                                </a>
-                                <a href="#settings" class="block px-4 py-2 hover:bg-gray-50 transition-colors">
-                                    <i class="fas fa-cog mr-2"></i>Settings
-                                </a>
-                                <button onclick="logout()" class="block w-full text-left px-4 py-2 hover:bg-gray-50 text-red-600 transition-colors">
-                                    <i class="fas fa-sign-out-alt mr-2"></i>Logout
-                                </button>
-                            </div>
+                        <div class="flex items-center space-x-3 bg-gray-100 rounded-lg px-3 py-2">
+                            <img id="userAvatar" class="w-8 h-8 rounded-full" src="" alt="Profile">
+                            <span id="userName" class="font-medium text-gray-700"></span>
                         </div>
-                        <span id="userName" class="font-medium text-gray-700"></span>
+                        <button onclick="logout()" class="px-3 py-2 text-gray-600 hover:text-red-600 transition-colors">
+                            <i class="fas fa-sign-out-alt"></i>
+                        </button>
                     </div>
                 </div>
             </div>
@@ -117,124 +141,241 @@
         <!-- Hero Section -->
         <section id="home" class="gradient-bg text-white py-20">
             <div class="max-w-7xl mx-auto px-4 text-center">
-                <h1 class="text-5xl md:text-6xl font-bold mb-6">Build, Learn & Collaborate</h1>
-                <p class="text-xl md:text-2xl mb-8 opacity-90">The ultimate platform for developers to code together, learn new skills, and grow their careers.</p>
+                <h1 class="text-5xl md:text-6xl font-bold mb-6">Code Together in Real-time</h1>
+                <p class="text-xl md:text-2xl mb-8 opacity-90">Collaborate, Learn, and Build with Developers Worldwide</p>
                 <div class="flex flex-col sm:flex-row gap-4 justify-center items-center">
-                    <button onclick="showAuthModal('register')" class="bg-white text-primary px-8 py-4 rounded-lg font-semibold hover-lift shadow-lg text-lg transition-all">
+                    <button onclick="showAuthModal('register')" class="bg-white text-primary px-8 py-4 rounded-lg font-semibold hover-lift shadow-lg text-lg">
                         <i class="fas fa-rocket mr-2"></i>Start Coding Free
                     </button>
-                    <button onclick="scrollToSection('features')" class="border-2 border-white text-white px-8 py-4 rounded-lg font-semibold hover-lift text-lg transition-all">
+                    <button onclick="scrollToSection('features')" class="border-2 border-white text-white px-8 py-4 rounded-lg font-semibold hover-lift text-lg">
                         <i class="fas fa-eye mr-2"></i>Explore Features
                     </button>
                 </div>
             </div>
         </section>
 
-        <!-- Features Section -->
+        <!-- Real-time Features -->
         <section id="features" class="py-20 bg-white">
             <div class="max-w-7xl mx-auto px-4">
-                <h2 class="text-4xl font-bold text-center mb-4 text-gray-800">Everything You Need to Succeed</h2>
-                <p class="text-xl text-center text-gray-600 mb-12">Professional tools for modern developers</p>
+                <h2 class="text-4xl font-bold text-center mb-4 text-gray-800">Real-time Collaboration Features</h2>
+                <p class="text-xl text-center text-gray-600 mb-12">Everything you need to code together</p>
                 
-                <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
-                    <!-- Feature 1 -->
-                    <div class="bg-gray-50 rounded-xl p-6 hover-lift transition-all border border-gray-200">
-                        <div class="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center mb-4">
-                            <i class="fas fa-users text-blue-600 text-xl"></i>
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                    <div class="text-center p-6 bg-gray-50 rounded-xl border border-gray-200">
+                        <div class="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                            <i class="fas fa-comments text-blue-600 text-xl"></i>
                         </div>
-                        <h3 class="text-xl font-semibold mb-3">Real-time Collaboration</h3>
-                        <p class="text-gray-600">Code together with multiple developers in real-time. See live cursors, chat while coding, and build together.</p>
+                        <h3 class="text-lg font-semibold mb-2">Live Chat</h3>
+                        <p class="text-gray-600 text-sm">Real-time messaging with code snippets and file sharing</p>
                     </div>
 
-                    <!-- Feature 2 -->
-                    <div class="bg-gray-50 rounded-xl p-6 hover-lift transition-all border border-gray-200">
-                        <div class="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center mb-4">
-                            <i class="fas fa-graduation-cap text-green-600 text-xl"></i>
+                    <div class="text-center p-6 bg-gray-50 rounded-xl border border-gray-200">
+                        <div class="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                            <i class="fas fa-code text-green-600 text-xl"></i>
                         </div>
-                        <h3 class="text-xl font-semibold mb-3">Interactive Learning</h3>
-                        <p class="text-gray-600">Master programming with hands-on lessons, coding challenges, and personalized learning paths.</p>
+                        <h3 class="text-lg font-semibold mb-2">Code Together</h3>
+                        <p class="text-gray-600 text-sm">Collaborative coding with live cursors and syncing</p>
                     </div>
 
-                    <!-- Feature 3 -->
-                    <div class="bg-gray-50 rounded-xl p-6 hover-lift transition-all border border-gray-200">
-                        <div class="w-12 h-12 bg-purple-100 rounded-lg flex items-center justify-center mb-4">
-                            <i class="fas fa-robot text-purple-600 text-xl"></i>
+                    <div class="text-center p-6 bg-gray-50 rounded-xl border border-gray-200">
+                        <div class="w-12 h-12 bg-purple-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                            <i class="fas fa-video text-purple-600 text-xl"></i>
                         </div>
-                        <h3 class="text-xl font-semibold mb-3">AI Coding Assistant</h3>
-                        <p class="text-gray-600">Get instant help with debugging, code explanations, and best practices from our AI assistant.</p>
+                        <h3 class="text-lg font-semibold mb-2">Video Calls</h3>
+                        <p class="text-gray-600 text-sm">Integrated video conferencing for pair programming</p>
+                    </div>
+
+                    <div class="text-center p-6 bg-gray-50 rounded-xl border border-gray-200">
+                        <div class="w-12 h-12 bg-orange-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                            <i class="fas fa-share-alt text-orange-600 text-xl"></i>
+                        </div>
+                        <h3 class="text-lg font-semibold mb-2">Project Sharing</h3>
+                        <p class="text-gray-600 text-sm">Share and collaborate on projects in real-time</p>
                     </div>
                 </div>
             </div>
         </section>
 
-        <!-- Live Demo Section -->
-        <section class="py-20 bg-gray-100">
+        <!-- Real-time Chat Section -->
+        <section id="chat" class="py-20 bg-gray-100">
             <div class="max-w-7xl mx-auto px-4">
-                <h2 class="text-4xl font-bold text-center mb-12 text-gray-800">Live Code Collaboration</h2>
+                <h2 class="text-4xl font-bold text-center mb-4 text-gray-800">Real-time Community Chat</h2>
+                <p class="text-xl text-center text-gray-600 mb-12">Join the conversation with developers worldwide</p>
                 
                 <div class="bg-white rounded-xl shadow-lg overflow-hidden">
-                    <div class="border-b border-gray-200">
-                        <div class="flex space-x-2 p-4">
-                            <div class="w-3 h-3 bg-red-500 rounded-full"></div>
-                            <div class="w-3 h-3 bg-yellow-500 rounded-full"></div>
-                            <div class="w-3 h-3 bg-green-500 rounded-full"></div>
+                    <div class="grid grid-cols-1 lg:grid-cols-4 h-96">
+                        <!-- Chat Rooms Sidebar -->
+                        <div class="lg:col-span-1 border-r border-gray-200 bg-gray-50">
+                            <div class="p-4 border-b border-gray-200">
+                                <h3 class="font-semibold text-gray-800">Chat Rooms</h3>
+                                <p class="text-sm text-gray-600" id="roomsCount">Loading rooms...</p>
+                            </div>
+                            <div class="overflow-y-auto h-80" id="chatRoomsList">
+                                <!-- Rooms will be loaded here -->
+                            </div>
+                        </div>
+
+                        <!-- Chat Messages Area -->
+                        <div class="lg:col-span-3 flex flex-col">
+                            <div class="p-4 border-b border-gray-200">
+                                <h3 class="font-semibold text-gray-800" id="currentRoomTitle">Select a Room</h3>
+                                <div class="flex items-center space-x-2 text-sm text-gray-600">
+                                    <span id="roomUserCount">0 users</span>
+                                    <span id="typingIndicator" class="hidden">
+                                        <span class="typing-indicator">
+                                            <span class="typing-dot"></span>
+                                            <span class="typing-dot"></span>
+                                            <span class="typing-dot"></span>
+                                        </span>
+                                        <span id="typingUsers"></span>
+                                    </span>
+                                </div>
+                            </div>
+                            
+                            <div class="flex-1 overflow-y-auto p-4 space-y-4" id="chatMessages">
+                                <div class="text-center text-gray-500 py-8">
+                                    <i class="fas fa-comments text-4xl mb-4 opacity-50"></i>
+                                    <p>Select a chat room to start messaging</p>
+                                </div>
+                            </div>
+
+                            <!-- Message Input -->
+                            <div class="p-4 border-t border-gray-200">
+                                <div class="flex space-x-4">
+                                    <input type="text" id="messageInput" 
+                                           placeholder="Type your message..." 
+                                           class="flex-1 px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
+                                           disabled>
+                                    <button id="sendMessageBtn" 
+                                            class="px-6 py-3 bg-primary text-white rounded-lg hover:bg-blue-700 transition-colors font-semibold disabled:opacity-50"
+                                            disabled>
+                                        <i class="fas fa-paper-plane"></i>
+                                    </button>
+                                </div>
+                                <div class="flex space-x-2 mt-2">
+                                    <button class="text-sm text-gray-500 hover:text-gray-700">
+                                        <i class="fas fa-code"></i> Code
+                                    </button>
+                                    <button class="text-sm text-gray-500 hover:text-gray-700">
+                                        <i class="fas fa-paperclip"></i> File
+                                    </button>
+                                    <button class="text-sm text-gray-500 hover:text-gray-700">
+                                        <i class="fas fa-smile"></i> Emoji
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Real-time Code Collaboration -->
+        <section id="collaborate" class="py-20 bg-white">
+            <div class="max-w-7xl mx-auto px-4">
+                <h2 class="text-4xl font-bold text-center mb-4 text-gray-800">Live Code Collaboration</h2>
+                <p class="text-xl text-center text-gray-600 mb-12">Code together in real-time with multiple developers</p>
+                
+                <div class="bg-gray-900 rounded-xl shadow-lg overflow-hidden">
+                    <div class="flex justify-between items-center px-6 py-4 bg-gray-800">
+                        <div class="flex items-center space-x-4">
+                            <div class="flex space-x-2">
+                                <div class="w-3 h-3 bg-red-500 rounded-full"></div>
+                                <div class="w-3 h-3 bg-yellow-500 rounded-full"></div>
+                                <div class="w-3 h-3 bg-green-500 rounded-full"></div>
+                            </div>
+                            <span class="text-gray-300 font-mono">collaboration.js</span>
+                        </div>
+                        <div class="flex items-center space-x-2 text-gray-400">
+                            <i class="fas fa-users"></i>
+                            <span id="collaboratorsCount">1 collaborator</span>
                         </div>
                     </div>
                     
                     <div class="p-6">
-                        <div class="code-editor bg-gray-900 text-gray-100 rounded-lg p-6 overflow-x-auto">
-                            <pre><code class="language-javascript text-sm">
-// Welcome to DEVS ARENA - Real-time Collaboration
-function collaborativeCoding() {
-    const features = [
-        "Real-time code editing",
-        "Live chat with teammates", 
-        "AI-powered assistance",
-        "Project sharing",
-        "Code execution"
-    ];
-    
-    console.log("🚀 Available Features:");
-    features.forEach(feature => {
-        console.log(`✅ ${feature}`);
-    });
-    
-    return "Start collaborating now!";
+                        <div class="code-editor bg-gray-800 text-gray-100 rounded-lg p-6 overflow-x-auto">
+                            <pre><code class="language-javascript text-sm" id="collaborationCode">
+// Welcome to Real-time Code Collaboration!
+// Multiple developers can edit this code simultaneously
+
+class CollaborationSession {
+    constructor() {
+        this.features = [
+            "Real-time code editing",
+            "Live cursor positions", 
+            "Multi-user collaboration",
+            "Syntax highlighting",
+            "Auto-save functionality"
+        ];
+        this.participants = new Map();
+    }
+
+    addParticipant(user) {
+        this.participants.set(user.id, user);
+        this.updateCollaboratorsUI();
+    }
+
+    updateCollaboratorsUI() {
+        const count = this.participants.size;
+        document.getElementById('collaboratorsCount').textContent = 
+            `${count} collaborator${count !== 1 ? 's' : ''}`;
+    }
+
+    broadcastCodeChange(newCode) {
+        // This happens in real-time across all connected clients
+        socket.emit('code_change', {
+            roomId: 'demo-room',
+            code: newCode,
+            userId: currentUser.id
+        });
+    }
 }
 
-// Try editing this code with your team
-collaborativeCoding();
+// Start collaborating!
+const session = new CollaborationSession();
+session.addParticipant({ id: 'user1', name: 'You' });
                             </code></pre>
                         </div>
                         
                         <div class="flex justify-between items-center mt-4">
-                            <div class="flex items-center space-x-2 text-sm text-gray-600">
-                                <i class="fas fa-users"></i>
-                                <span id="onlineCount">0 users online</span>
-                            </div>
                             <div class="flex space-x-3">
-                                <button class="px-4 py-2 bg-gray-200 rounded-lg hover:bg-gray-300 transition-colors">
+                                <button class="px-4 py-2 bg-gray-700 text-gray-300 rounded-lg hover:bg-gray-600 transition-colors">
                                     <i class="fas fa-copy mr-2"></i>Copy
                                 </button>
                                 <button class="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors">
                                     <i class="fas fa-play mr-2"></i>Run Code
                                 </button>
+                                <button class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">
+                                    <i class="fas fa-share mr-2"></i>Share Session
+                                </button>
+                            </div>
+                            <div class="text-sm text-gray-400">
+                                <i class="fas fa-globe mr-1"></i>
+                                Live collaboration enabled
                             </div>
                         </div>
+                    </div>
+                </div>
+
+                <!-- Collaboration Rooms -->
+                <div class="mt-12">
+                    <h3 class="text-2xl font-bold mb-6 text-gray-800">Active Collaboration Rooms</h3>
+                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6" id="collaborationRooms">
+                        <!-- Rooms will be loaded here -->
                     </div>
                 </div>
             </div>
         </section>
 
         <!-- AI Assistant Section -->
-        <section id="ai" class="py-20 bg-white">
+        <section id="ai" class="py-20 bg-gray-100">
             <div class="max-w-4xl mx-auto px-4">
                 <h2 class="text-4xl font-bold text-center mb-4 text-gray-800">AI Coding Assistant</h2>
                 <p class="text-xl text-center text-gray-600 mb-12">Get instant help with your code</p>
                 
-                <div class="bg-gray-50 rounded-xl shadow-lg p-6">
-                    <div id="aiChat" class="h-80 overflow-y-auto mb-4 space-y-4 p-4 bg-white rounded-lg">
-                        <div class="ai-message bg-blue-50 p-4 rounded-lg">
+                <div class="bg-white rounded-xl shadow-lg p-6">
+                    <div id="aiChat" class="h-80 overflow-y-auto mb-4 space-y-4 p-4 bg-gray-50 rounded-lg">
+                        <div class="ai-message bg-white p-4 rounded-lg shadow-sm">
                             <div class="flex items-center space-x-2 mb-2">
                                 <i class="fas fa-robot text-blue-600"></i>
                                 <strong class="text-blue-800">AI Assistant</strong>
@@ -245,23 +386,40 @@ collaborativeCoding();
                     
                     <div class="flex space-x-4">
                         <input type="text" id="aiInput" placeholder="Ask me anything about coding..." 
-                               class="flex-1 px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent">
+                               class="flex-1 px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
+                               onkeypress="if(event.key === 'Enter') sendToAI()">
                         <button onclick="sendToAI()" class="px-6 py-3 bg-primary text-white rounded-lg hover:bg-blue-700 transition-colors font-semibold">
                             <i class="fas fa-paper-plane mr-2"></i>Send
+                        </button>
+                    </div>
+
+                    <!-- Quick Action Buttons -->
+                    <div class="flex flex-wrap gap-2 mt-4">
+                        <button onclick="quickAIQuestion('help')" class="px-3 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors text-sm">
+                            What can you help with?
+                        </button>
+                        <button onclick="quickAIQuestion('real time chat')" class="px-3 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors text-sm">
+                            Chat features
+                        </button>
+                        <button onclick="quickAIQuestion('collaboration')" class="px-3 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors text-sm">
+                            Collaboration tools
+                        </button>
+                        <button onclick="quickAIQuestion('javascript')" class="px-3 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors text-sm">
+                            JavaScript help
                         </button>
                     </div>
                 </div>
             </div>
         </section>
 
-        <!-- Community Projects -->
-        <section id="projects" class="py-20 bg-gray-100">
+        <!-- API Marketplace -->
+        <section id="apis" class="py-20 bg-white">
             <div class="max-w-7xl mx-auto px-4">
-                <h2 class="text-4xl font-bold text-center mb-4 text-gray-800">Community Projects</h2>
-                <p class="text-xl text-center text-gray-600 mb-12">Explore projects built by our developers</p>
+                <h2 class="text-4xl font-bold text-center mb-4 text-gray-800">Free API Marketplace</h2>
+                <p class="text-xl text-center text-gray-600 mb-12">Integrate powerful APIs into your projects</p>
                 
-                <div id="projectsGrid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                    <!-- Projects will be loaded here -->
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6" id="apiMarketplace">
+                    <!-- APIs will be loaded here -->
                 </div>
             </div>
         </section>
@@ -280,17 +438,22 @@ collaborativeCoding();
             <form id="authForm" class="space-y-4">
                 <div id="nameField" class="hidden">
                     <label class="block text-sm font-medium text-gray-700 mb-2">Full Name</label>
-                    <input type="text" name="name" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all" placeholder="Enter your full name">
+                    <input type="text" name="name" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent" placeholder="Enter your full name">
                 </div>
                 
                 <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-2">Email or Username</label>
-                    <input type="text" name="email" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all" placeholder="Enter your email or username" required>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Username</label>
+                    <input type="text" name="username" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent" placeholder="Choose a username" required>
+                </div>
+
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Email</label>
+                    <input type="email" name="email" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent" placeholder="Enter your email" required>
                 </div>
                 
                 <div>
                     <label class="block text-sm font-medium text-gray-700 mb-2">Password</label>
-                    <input type="password" name="password" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all" placeholder="Enter your password" required>
+                    <input type="password" name="password" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent" placeholder="Enter your password" required>
                 </div>
 
                 <div id="skillFields" class="hidden space-y-4">
@@ -311,18 +474,13 @@ collaborativeCoding();
                             <option value="Full-Stack">Full-Stack Development</option>
                             <option value="Mobile">Mobile Development</option>
                             <option value="Data Science">Data Science</option>
-                            <option value="DevOps">DevOps</option>
                         </select>
-                    </div>
-
-                    <div class="flex items-center space-x-2">
-                        <input type="checkbox" name="isStudent" class="rounded border-gray-300 text-primary focus:ring-primary">
-                        <label class="text-sm text-gray-700">I am a student</label>
                     </div>
                 </div>
 
-                <button type="submit" class="w-full bg-primary text-white py-3 rounded-lg font-semibold hover:bg-blue-700 transition-colors focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2">
+                <button type="submit" id="authSubmitBtn" class="w-full bg-primary text-white py-3 rounded-lg font-semibold hover:bg-blue-700 transition-colors focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2">
                     <span id="authButtonText">Login to Account</span>
+                    <i id="authSpinner" class="fas fa-spinner fa-spin ml-2 hidden"></i>
                 </button>
             </form>
 
@@ -345,41 +503,470 @@ collaborativeCoding();
         let currentUser = null;
         let socket = null;
         let currentAuthMode = 'login';
+        let currentRoom = null;
+        let typingUsers = new Set();
+        let typingTimer = null;
 
         // Initialize application
         document.addEventListener('DOMContentLoaded', function() {
+            console.log('🚀 DEVS ARENA Frontend Initialized');
             initializeApp();
-            loadProjects();
         });
 
         async function initializeApp() {
-            // Check authentication status
             await checkAuthStatus();
+            initializeSocket();
+            loadChatRooms();
+            loadCollaborationRooms();
+            loadAPIs();
             
-            // Initialize Socket.io
-            socket = io();
-            setupSocketListeners();
+            // Initialize code highlighting
+            if (hljs) {
+                hljs.highlightAll();
+            }
         }
 
-        function setupSocketListeners() {
+        function initializeSocket() {
+            socket = io();
+            
             socket.on('connect', () => {
-                console.log('Connected to server');
+                console.log('✅ Connected to server');
                 if (currentUser) {
                     socket.emit('user_online', currentUser.id);
                 }
             });
 
-            socket.on('online_users', (users) => {
-                document.getElementById('onlineCount').textContent = `${users.length} users online`;
+            // Online users update
+            socket.on('users_online_update', (data) => {
+                document.getElementById('onlineCount').textContent = `${data.online} online`;
+                document.getElementById('onlineStatus').classList.remove('hidden');
             });
 
+            // Real-time chat messages
             socket.on('new_message', (message) => {
-                // Handle new chat messages
-                console.log('New message:', message);
+                displayMessage(message);
+            });
+
+            // Typing indicators
+            socket.on('user_typing', (data) => {
+                handleTypingIndicator(data);
+            });
+
+            // Room user count updates
+            socket.on('room_users_update', (data) => {
+                if (data.roomId === currentRoom) {
+                    document.getElementById('roomUserCount').textContent = `${data.userCount} users`;
+                }
+            });
+
+            // Code collaboration updates
+            socket.on('code_update', (data) => {
+                document.getElementById('collaborationCode').textContent = data.code;
+                if (hljs) {
+                    hljs.highlightAll();
+                }
+            });
+
+            socket.on('cursor_update', (data) => {
+                // Handle cursor positions (would need custom implementation)
+                console.log('Cursor updates:', data.cursors);
+            });
+
+            socket.on('error', (error) => {
+                showNotification('Error', error.message, 'error');
             });
         }
 
-        // Authentication functions
+        // Chat functionality
+        async function loadChatRooms() {
+            try {
+                const response = await fetch('/api/chat/rooms');
+                const result = await response.json();
+                
+                if (result.success) {
+                    displayChatRooms(result.rooms);
+                }
+            } catch (error) {
+                console.error('Failed to load chat rooms:', error);
+            }
+        }
+
+        function displayChatRooms(rooms) {
+            const container = document.getElementById('chatRoomsList');
+            container.innerHTML = rooms.map(room => `
+                <div class="p-3 border-b border-gray-200 hover:bg-white cursor-pointer transition-colors" 
+                     onclick="joinRoom('${room.id}')">
+                    <div class="flex justify-between items-center">
+                        <div>
+                            <h4 class="font-medium text-gray-800">${room.name}</h4>
+                            <p class="text-sm text-gray-600">${room.description}</p>
+                        </div>
+                        <div class="flex items-center space-x-2">
+                            <span class="text-xs bg-primary text-white px-2 py-1 rounded-full">${room.users}</span>
+                        </div>
+                    </div>
+                </div>
+            `).join('');
+            
+            document.getElementById('roomsCount').textContent = `${rooms.length} rooms available`;
+        }
+
+        async function joinRoom(roomId) {
+            if (!currentUser) {
+                showNotification('Authentication Required', 'Please login to join chat rooms', 'warning');
+                showAuthModal('login');
+                return;
+            }
+
+            currentRoom = roomId;
+            socket.emit('join_room', roomId);
+            
+            // Update UI
+            document.getElementById('currentRoomTitle').textContent = 
+                roomId.charAt(0).toUpperCase() + roomId.slice(1) + ' Chat';
+            
+            // Enable message input
+            document.getElementById('messageInput').disabled = false;
+            document.getElementById('sendMessageBtn').disabled = false;
+            
+            // Load room messages
+            await loadRoomMessages(roomId);
+        }
+
+        async function loadRoomMessages(roomId) {
+            try {
+                const response = await fetch(`/api/chat/messages/${roomId}`);
+                const result = await response.json();
+                
+                const messagesContainer = document.getElementById('chatMessages');
+                messagesContainer.innerHTML = '';
+                
+                if (result.success && result.messages) {
+                    result.messages.forEach(message => {
+                        displayMessage(message);
+                    });
+                }
+                
+                messagesContainer.scrollTop = messagesContainer.scrollHeight;
+            } catch (error) {
+                console.error('Failed to load messages:', error);
+            }
+        }
+
+        function displayMessage(message) {
+            const messagesContainer = document.getElementById('chatMessages');
+            
+            const messageDiv = document.createElement('div');
+            messageDiv.className = 'message-enter bg-white p-4 rounded-lg shadow-sm';
+            
+            const time = new Date(message.createdAt).toLocaleTimeString();
+            
+            messageDiv.innerHTML = `
+                <div class="flex items-start space-x-3">
+                    <img src="${message.user.avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(message.user.username)}&background=2563eb&color=fff`}" 
+                         class="w-8 h-8 rounded-full" alt="${message.user.username}">
+                    <div class="flex-1">
+                        <div class="flex items-center space-x-2 mb-1">
+                            <span class="font-semibold text-gray-800">${message.user.name || message.user.username}</span>
+                            <span class="text-xs text-gray-500">${time}</span>
+                        </div>
+                        <div class="text-gray-700">
+                            ${message.type === 'code' ? 
+                                `<pre class="bg-gray-100 p-3 rounded-lg overflow-x-auto"><code class="language-${message.codeLanguage}">${message.content}</code></pre>` :
+                                message.content
+                            }
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            messagesContainer.appendChild(messageDiv);
+            messagesContainer.scrollTop = messagesContainer.scrollHeight;
+            
+            // Re-highlight code blocks
+            if (message.type === 'code' && hljs) {
+                const codeBlock = messageDiv.querySelector('code');
+                hljs.highlightElement(codeBlock);
+            }
+        }
+
+        function sendMessage() {
+            const input = document.getElementById('messageInput');
+            const message = input.value.trim();
+            
+            if (!message || !currentRoom || !currentUser) return;
+            
+            socket.emit('send_message', {
+                room: currentRoom,
+                userId: currentUser.id,
+                content: message,
+                type: 'text'
+            });
+            
+            input.value = '';
+            stopTyping();
+        }
+
+        function handleTypingIndicator(data) {
+            const indicator = document.getElementById('typingIndicator');
+            const typingUsersSpan = document.getElementById('typingUsers');
+            
+            if (data.isTyping) {
+                typingUsers.add(data.username);
+            } else {
+                typingUsers.delete(data.username);
+            }
+            
+            if (typingUsers.size > 0) {
+                const users = Array.from(typingUsers).join(', ');
+                typingUsersSpan.textContent = `${users} ${typingUsers.size === 1 ? 'is' : 'are'} typing...`;
+                indicator.classList.remove('hidden');
+            } else {
+                indicator.classList.add('hidden');
+            }
+        }
+
+        function startTyping() {
+            if (!currentRoom || !currentUser) return;
+            
+            socket.emit('typing_start', {
+                room: currentRoom,
+                userId: currentUser.id,
+                username: currentUser.username
+            });
+            
+            clearTimeout(typingTimer);
+            typingTimer = setTimeout(stopTyping, 3000);
+        }
+
+        function stopTyping() {
+            if (!currentRoom || !currentUser) return;
+            
+            socket.emit('typing_stop', {
+                room: currentRoom,
+                userId: currentUser.id,
+                username: currentUser.username
+            });
+            
+            clearTimeout(typingTimer);
+        }
+
+        // Collaboration rooms
+        async function loadCollaborationRooms() {
+            try {
+                const response = await fetch('/api/collaboration/rooms');
+                const result = await response.json();
+                
+                if (result.success) {
+                    displayCollaborationRooms(result.rooms);
+                }
+            } catch (error) {
+                console.error('Failed to load collaboration rooms:', error);
+            }
+        }
+
+        function displayCollaborationRooms(rooms) {
+            const container = document.getElementById('collaborationRooms');
+            
+            if (!rooms || rooms.length === 0) {
+                container.innerHTML = `
+                    <div class="col-span-3 text-center py-8">
+                        <i class="fas fa-users text-4xl text-gray-400 mb-4"></i>
+                        <p class="text-gray-600">No active collaboration rooms yet.</p>
+                        <button onclick="createCollaborationRoom()" class="mt-4 px-4 py-2 bg-primary text-white rounded-lg hover:bg-blue-700">
+                            Create First Room
+                        </button>
+                    </div>
+                `;
+                return;
+            }
+            
+            container.innerHTML = rooms.map(room => `
+                <div class="bg-white rounded-lg shadow-md border border-gray-200 overflow-hidden hover-lift">
+                    <div class="p-4">
+                        <h4 class="font-semibold text-gray-800 mb-2">${room.name}</h4>
+                        <p class="text-sm text-gray-600 mb-3">${room.description || 'No description'}</p>
+                        
+                        <div class="flex items-center justify-between mb-3">
+                            <div class="flex items-center space-x-2">
+                                <img src="${room.owner.avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(room.owner.username)}&background=2563eb&color=fff`}" 
+                                     class="w-6 h-6 rounded-full" alt="${room.owner.username}">
+                                <span class="text-sm text-gray-600">${room.owner.username}</span>
+                            </div>
+                            <span class="text-xs bg-green-100 text-green-800 px-2 py-1 rounded-full">
+                                ${room.participants.length}/${room.maxParticipants}
+                            </span>
+                        </div>
+                        
+                        <button onclick="joinCollaborationRoom('${room._id}')" 
+                                class="w-full bg-primary text-white py-2 rounded-lg hover:bg-blue-700 transition-colors font-medium">
+                            Join Room
+                        </button>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function joinCollaborationRoom(roomId) {
+            if (!currentUser) {
+                showNotification('Authentication Required', 'Please login to join collaboration rooms', 'warning');
+                showAuthModal('login');
+                return;
+            }
+            
+            showNotification('Info', 'Joining collaboration room...', 'info');
+            // In a real implementation, this would open a code collaboration interface
+        }
+
+        // API Marketplace
+        async function loadAPIs() {
+            try {
+                const response = await fetch('/api/marketplace/apis');
+                const result = await response.json();
+                
+                if (result.success) {
+                    displayAPIs(result.apis);
+                }
+            } catch (error) {
+                console.error('Failed to load APIs:', error);
+            }
+        }
+
+        function displayAPIs(apis) {
+            const container = document.getElementById('apiMarketplace');
+            
+            container.innerHTML = apis.map(api => `
+                <div class="bg-white rounded-lg shadow-md border border-gray-200 overflow-hidden hover-lift">
+                    <div class="p-6">
+                        <div class="flex items-center justify-between mb-3">
+                            <h4 class="font-semibold text-gray-800">${api.name}</h4>
+                            <span class="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded-full">
+                                ${api.category}
+                            </span>
+                        </div>
+                        
+                        <p class="text-sm text-gray-600 mb-4">${api.description}</p>
+                        
+                        <div class="space-y-2 mb-4">
+                            <div class="flex items-center space-x-2 text-sm">
+                                <span class="font-mono bg-gray-100 px-2 py-1 rounded text-xs">${api.method}</span>
+                                <span class="text-gray-600 truncate">${api.endpoint}</span>
+                            </div>
+                        </div>
+                        
+                        <button onclick="testAPI('${api.id}')" 
+                                class="w-full bg-gray-100 text-gray-700 py-2 rounded-lg hover:bg-gray-200 transition-colors font-medium">
+                            Test API
+                        </button>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        // AI Assistant functions (from previous implementation)
+        async function sendToAI() {
+            const input = document.getElementById('aiInput');
+            const message = input.value.trim();
+            
+            if (!message) return;
+            
+            if (!currentUser) {
+                showNotification('Authentication Required', 'Please login to use AI assistant', 'warning');
+                showAuthModal('login');
+                return;
+            }
+
+            addAIMessage('user', message);
+            input.value = '';
+
+            try {
+                const response = await fetch('/api/ai/chat', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ message })
+                });
+
+                const result = await response.json();
+                if (result.success) {
+                    addAIMessage('ai', result.response);
+                } else {
+                    addAIMessage('ai', 'Sorry, I encountered an error. Please try again.');
+                }
+            } catch (error) {
+                addAIMessage('ai', 'Network error. Please check your connection.');
+            }
+        }
+
+        function quickAIQuestion(question) {
+            document.getElementById('aiInput').value = question;
+            sendToAI();
+        }
+
+        function addAIMessage(sender, message) {
+            const chat = document.getElementById('aiChat');
+            const messageDiv = document.createElement('div');
+            
+            if (sender === 'user') {
+                messageDiv.className = 'user-message bg-white p-4 rounded-lg shadow-sm ml-8';
+                messageDiv.innerHTML = `
+                    <div class="flex items-center space-x-2 mb-2">
+                        <i class="fas fa-user text-gray-600"></i>
+                        <strong class="text-gray-800">You</strong>
+                    </div>
+                    <p class="text-gray-700">${message}</p>
+                `;
+            } else {
+                messageDiv.className = 'ai-message bg-white p-4 rounded-lg shadow-sm';
+                messageDiv.innerHTML = `
+                    <div class="flex items-center space-x-2 mb-2">
+                        <i class="fas fa-robot text-blue-600"></i>
+                        <strong class="text-blue-800">AI Assistant</strong>
+                    </div>
+                    <div class="text-gray-700">${message}</div>
+                `;
+            }
+            
+            chat.appendChild(messageDiv);
+            chat.scrollTop = chat.scrollHeight;
+        }
+
+        // Authentication functions (from previous implementation)
+        async function checkAuthStatus() {
+            try {
+                const response = await fetch('/api/auth/user');
+                const result = await response.json();
+                
+                if (result.success && result.user) {
+                    currentUser = result.user;
+                    updateUIForUser();
+                }
+            } catch (error) {
+                console.error('Auth check error:', error);
+            }
+        }
+
+        function updateUIForUser() {
+            const authSection = document.getElementById('authSection');
+            const userSection = document.getElementById('userSection');
+            const userAvatar = document.getElementById('userAvatar');
+            const userName = document.getElementById('userName');
+
+            if (currentUser) {
+                authSection.classList.add('hidden');
+                userSection.classList.remove('hidden');
+                
+                if (userAvatar) {
+                    userAvatar.src = currentUser.avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(currentUser.name || currentUser.username)}&background=2563eb&color=fff`;
+                }
+                if (userName) {
+                    userName.textContent = currentUser.name || currentUser.username;
+                }
+            } else {
+                authSection.classList.remove('hidden');
+                userSection.classList.add('hidden');
+            }
+        }
+
         function showAuthModal(mode) {
             currentAuthMode = mode;
             const modal = document.getElementById('authModal');
@@ -413,12 +1000,17 @@ collaborativeCoding();
             document.getElementById('authForm').reset();
         }
 
-        function switchAuthMode(mode) {
-            showAuthModal(mode);
-        }
-
         async function handleAuthSubmit(e) {
             e.preventDefault();
+            
+            const submitBtn = document.getElementById('authSubmitBtn');
+            const spinner = document.getElementById('authSpinner');
+            const buttonText = document.getElementById('authButtonText');
+            
+            submitBtn.classList.add('loading');
+            spinner.classList.remove('hidden');
+            buttonText.textContent = currentAuthMode === 'register' ? 'Creating Account...' : 'Logging in...';
+
             const formData = new FormData(e.target);
             const data = Object.fromEntries(formData);
 
@@ -441,11 +1033,17 @@ collaborativeCoding();
                     if (socket) {
                         socket.emit('user_online', currentUser.id);
                     }
+                    
+                    setTimeout(() => location.reload(), 1000);
                 } else {
                     showNotification('Error', result.message, 'error');
                 }
             } catch (error) {
                 showNotification('Error', 'Network error. Please try again.', 'error');
+            } finally {
+                submitBtn.classList.remove('loading');
+                spinner.classList.add('hidden');
+                buttonText.textContent = currentAuthMode === 'register' ? 'Create Account' : 'Login to Account';
             }
         }
 
@@ -455,178 +1053,23 @@ collaborativeCoding();
 
         async function logout() {
             try {
-                const response = await fetch('/api/auth/logout', { 
-                    method: 'POST' 
-                });
+                const response = await fetch('/api/auth/logout', { method: 'POST' });
                 const result = await response.json();
                 
                 if (result.success) {
                     currentUser = null;
                     updateUIForUser();
                     showNotification('Success', 'Logged out successfully', 'success');
+                    
                     if (socket) {
                         socket.disconnect();
                     }
+                    
+                    setTimeout(() => location.reload(), 1000);
                 }
             } catch (error) {
-                console.error('Logout error:', error);
+                showNotification('Error', 'Logout failed', 'error');
             }
-        }
-
-        async function checkAuthStatus() {
-            try {
-                const response = await fetch('/api/auth/user');
-                const result = await response.json();
-                
-                if (result.success && result.user) {
-                    currentUser = result.user;
-                    updateUIForUser();
-                }
-            } catch (error) {
-                console.error('Auth check error:', error);
-            }
-        }
-
-        function updateUIForUser() {
-            const authSection = document.getElementById('authSection');
-            const userSection = document.getElementById('userSection');
-            const userAvatar = document.getElementById('userAvatar');
-            const userName = document.getElementById('userName');
-
-            if (currentUser) {
-                authSection.classList.add('hidden');
-                userSection.classList.remove('hidden');
-                
-                if (userAvatar) {
-                    userAvatar.src = currentUser.avatar || 'https://ui-avatars.com/api/?name=' + encodeURIComponent(currentUser.name || currentUser.username) + '&background=2563eb&color=fff';
-                }
-                if (userName) {
-                    userName.textContent = currentUser.name || currentUser.username;
-                }
-            } else {
-                authSection.classList.remove('hidden');
-                userSection.classList.add('hidden');
-            }
-        }
-
-        // AI Assistant functions
-        async function sendToAI() {
-            const input = document.getElementById('aiInput');
-            const message = input.value.trim();
-            
-            if (!message) return;
-            
-            if (!currentUser) {
-                showNotification('Authentication Required', 'Please login to use the AI assistant', 'warning');
-                return;
-            }
-
-            addMessageToChat('user', message);
-            input.value = '';
-
-            try {
-                const response = await fetch('/api/ai/chat', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ message })
-                });
-
-                const result = await response.json();
-                if (result.success) {
-                    addMessageToChat('ai', result.response);
-                } else {
-                    addMessageToChat('ai', 'Sorry, I encountered an error. Please try again.');
-                }
-            } catch (error) {
-                addMessageToChat('ai', 'Network error. Please check your connection.');
-            }
-        }
-
-        function addMessageToChat(sender, message) {
-            const chat = document.getElementById('aiChat');
-            const messageDiv = document.createElement('div');
-            
-            if (sender === 'user') {
-                messageDiv.className = 'user-message bg-gray-100 p-4 rounded-lg ml-8';
-                messageDiv.innerHTML = `
-                    <div class="flex items-center space-x-2 mb-2">
-                        <i class="fas fa-user text-gray-600"></i>
-                        <strong class="text-gray-800">You</strong>
-                    </div>
-                    <p class="text-gray-700">${message}</p>
-                `;
-            } else {
-                messageDiv.className = 'ai-message bg-blue-50 p-4 rounded-lg';
-                messageDiv.innerHTML = `
-                    <div class="flex items-center space-x-2 mb-2">
-                        <i class="fas fa-robot text-blue-600"></i>
-                        <strong class="text-blue-800">AI Assistant</strong>
-                    </div>
-                    <p class="text-gray-700">${message}</p>
-                `;
-            }
-            
-            chat.appendChild(messageDiv);
-            chat.scrollTop = chat.scrollHeight;
-        }
-
-        // Projects functions
-        async function loadProjects() {
-            try {
-                const response = await fetch('/api/projects');
-                const result = await response.json();
-                
-                if (result.success) {
-                    displayProjects(result.projects);
-                }
-            } catch (error) {
-                console.error('Failed to load projects:', error);
-            }
-        }
-
-        function displayProjects(projects) {
-            const grid = document.getElementById('projectsGrid');
-            
-            if (!projects || projects.length === 0) {
-                grid.innerHTML = `
-                    <div class="col-span-3 text-center py-12">
-                        <i class="fas fa-folder-open text-4xl text-gray-400 mb-4"></i>
-                        <p class="text-gray-600">No projects yet. Be the first to share your work!</p>
-                    </div>
-                `;
-                return;
-            }
-
-            grid.innerHTML = projects.map(project => `
-                <div class="bg-white rounded-xl shadow-md overflow-hidden hover-lift transition-all border border-gray-200">
-                    <div class="p-6">
-                        <h3 class="text-xl font-semibold mb-2 text-gray-800">${project.title}</h3>
-                        <p class="text-gray-600 mb-4">${project.description || 'No description provided'}</p>
-                        
-                        <div class="flex items-center justify-between mb-4">
-                            <div class="flex items-center space-x-2">
-                                <img src="${project.owner.avatar || 'https://ui-avatars.com/api/?name=' + encodeURIComponent(project.owner.username) + '&background=2563eb&color=fff'}" 
-                                     class="w-6 h-6 rounded-full" alt="${project.owner.username}">
-                                <span class="text-sm text-gray-600">${project.owner.username}</span>
-                            </div>
-                            <div class="flex items-center space-x-2 text-sm text-gray-500">
-                                <i class="fas fa-heart"></i>
-                                <span>${project.likesCount}</span>
-                            </div>
-                        </div>
-                        
-                        <div class="flex flex-wrap gap-2 mb-4">
-                            ${project.tags && project.tags.map(tag => 
-                                `<span class="px-2 py-1 bg-gray-100 text-gray-700 rounded text-xs">${tag}</span>`
-                            ).join('')}
-                        </div>
-                        
-                        <button class="w-full bg-primary text-white py-2 rounded-lg hover:bg-blue-700 transition-colors font-medium">
-                            <i class="fas fa-eye mr-2"></i>View Project
-                        </button>
-                    </div>
-                </div>
-            `).join('');
         }
 
         // Utility functions
@@ -636,20 +1079,19 @@ collaborativeCoding();
             const notifTitle = document.getElementById('notificationTitle');
             const notifMessage = document.getElementById('notificationMessage');
 
-            // Set icon and colors based on type
             const styles = {
-                success: { icon: 'fas fa-check-circle', color: 'text-green-500', border: 'border-green-500' },
-                error: { icon: 'fas fa-exclamation-circle', color: 'text-red-500', border: 'border-red-500' },
-                warning: { icon: 'fas fa-exclamation-triangle', color: 'text-yellow-500', border: 'border-yellow-500' },
-                info: { icon: 'fas fa-info-circle', color: 'text-blue-500', border: 'border-blue-500' }
+                success: { icon: 'fas fa-check-circle text-green-500', border: 'border-l-green-500' },
+                error: { icon: 'fas fa-exclamation-circle text-red-500', border: 'border-l-red-500' },
+                warning: { icon: 'fas fa-exclamation-triangle text-yellow-500', border: 'border-l-yellow-500' },
+                info: { icon: 'fas fa-info-circle text-blue-500', border: 'border-l-blue-500' }
             };
 
             const style = styles[type] || styles.info;
 
-            icon.className = `${style.icon} ${style.color}`;
+            icon.className = style.icon;
             notifTitle.textContent = title;
             notifMessage.textContent = message;
-            notification.className = `fixed top-4 right-4 z-50 notification ${style.border}`;
+            notification.className = `fixed top-4 right-4 z-50 max-w-sm ${style.border}`;
 
             notification.classList.remove('hidden');
             
@@ -659,29 +1101,20 @@ collaborativeCoding();
         }
 
         function scrollToSection(sectionId) {
-            document.getElementById(sectionId)?.scrollIntoView({ 
-                behavior: 'smooth' 
-            });
+            document.getElementById(sectionId)?.scrollIntoView({ behavior: 'smooth' });
         }
 
         // Event listeners
         document.getElementById('authForm').addEventListener('submit', handleAuthSubmit);
-        document.getElementById('aiInput').addEventListener('keypress', function(e) {
+        document.getElementById('sendMessageBtn').addEventListener('click', sendMessage);
+        document.getElementById('messageInput').addEventListener('keypress', function(e) {
             if (e.key === 'Enter') {
-                sendToAI();
+                sendMessage();
             }
         });
+        document.getElementById('messageInput').addEventListener('input', startTyping);
 
-        // Theme toggle (basic implementation)
-        document.getElementById('themeToggle').addEventListener('click', function() {
-            document.documentElement.classList.toggle('dark');
-            const icon = this.querySelector('i');
-            if (document.documentElement.classList.contains('dark')) {
-                icon.className = 'fas fa-sun text-yellow-500';
-            } else {
-                icon.className = 'fas fa-moon text-gray-600';
-            }
-        });
+        console.log('🎉 DEVS ARENA Real-time Features Ready!');
     </script>
 </body>
-</html>
+                                </html>
