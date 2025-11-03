@@ -1,200 +1,959 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" class="h-full">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Devs Place - Developer Community</title>
-    <link rel="stylesheet" href="style.css">
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.24.1/themes/prism-tomorrow.min.css" rel="stylesheet">
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <title>DEVS ARENA - Real-Time Developer Platform</title>
+    <meta name="description" content="All-in-one developer ecosystem for learning, collaboration, and real-time coding">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/codemirror.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism-tomorrow.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.7.4/socket.io.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/codemirror.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/javascript/javascript.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/xml/xml.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/css/css.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    screens: {
+                        '4k': '2560px'
+                    },
+                    colors: {
+                        primary: '#2563eb',
+                        dark: {
+                            bg: '#1a1a1a',
+                            card: '#2d2d2d'
+                        }
+                    }
+                }
+            },
+            darkMode: 'class'
+        }
+    </script>
+    <style>
+        .cm-editor { height: 300px; border: 1px solid #e5e7eb; border-radius: 0.5rem; }
+        .dark .cm-editor { border-color: #4b5563; }
+        .progress-bar { transition: width 0.5s ease-in-out; }
+        .fade-in { animation: fadeIn 0.5s ease-in; }
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+        .message-enter { animation: slideIn 0.3s ease-out; }
+        @keyframes slideIn { from { transform: translateX(-100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+    </style>
 </head>
-<body>
-    <div id="app">
-        <!-- Auth Section -->
-        <div id="auth-section" class="section active">
-            <div class="auth-container">
-                <div class="auth-header">
-                    <h1><i class="fas fa-code"></i> Devs Place</h1>
-                    <p>Connect, Collaborate, Code</p>
-                </div>
-                
-                <div class="auth-forms">
-                    <div class="form-container active" id="login-form">
-                        <h2>Welcome Back</h2>
-                        <form id="loginForm">
-                            <div class="form-group">
-                                <input type="email" id="loginEmail" placeholder="Email" required>
-                            </div>
-                            <div class="form-group">
-                                <input type="password" id="loginPassword" placeholder="Password" required>
-                            </div>
-                            <button type="submit" class="btn btn-primary">Sign In</button>
-                        </form>
-                        <p class="auth-switch">Don't have an account? <a href="#" id="showRegister">Sign Up</a></p>
+<body class="h-full bg-gray-50 dark:bg-dark-bg transition-colors duration-300">
+    <!-- Navigation -->
+    <nav class="bg-primary text-white shadow-lg sticky top-0 z-50">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between h-16">
+                <div class="flex items-center">
+                    <div class="flex-shrink-0 flex items-center">
+                        <h1 class="text-xl font-bold">DEVS ARENA</h1>
                     </div>
-                    
-                    <div class="form-container" id="register-form">
-                        <h2>Join Devs Place</h2>
-                        <form id="registerForm">
-                            <div class="form-group">
-                                <input type="text" id="registerUsername" placeholder="Username" required>
-                            </div>
-                            <div class="form-group">
-                                <input type="email" id="registerEmail" placeholder="Email" required>
-                            </div>
-                            <div class="form-group">
-                                <input type="password" id="registerPassword" placeholder="Password" required>
-                            </div>
-                            <button type="submit" class="btn btn-primary">Create Account</button>
-                        </form>
-                        <p class="auth-switch">Already have an account? <a href="#" id="showLogin">Sign In</a></p>
+                    <div class="hidden md:ml-6 md:flex md:space-x-4">
+                        <a href="#home" class="nav-link px-3 py-2 rounded-md text-sm font-medium hover:bg-blue-700 transition">Home</a>
+                        <a href="#learn" class="nav-link px-3 py-2 rounded-md text-sm font-medium hover:bg-blue-700 transition">Learn</a>
+                        <a href="#projects" class="nav-link px-3 py-2 rounded-md text-sm font-medium hover:bg-blue-700 transition">Projects</a>
+                        <a href="#apis" class="nav-link px-3 py-2 rounded-md text-sm font-medium hover:bg-blue-700 transition">Free APIs</a>
+                        <a href="#chat" class="nav-link px-3 py-2 rounded-md text-sm font-medium hover:bg-blue-700 transition">Chat</a>
+                        <a href="#jobs" class="nav-link px-3 py-2 rounded-md text-sm font-medium hover:bg-blue-700 transition">Jobs</a>
+                    </div>
+                </div>
+                <div class="flex items-center space-x-4">
+                    <button id="themeToggle" class="p-2 rounded-full hover:bg-blue-700 transition">
+                        <svg class="w-5 h-5 hidden dark:block" fill="currentColor" viewBox="0 0 20 20"><path d="M10 2a1 1 0 011 1v1a1 1 0 11-2 0V3a1 1 0 011-1zm4 8a4 4 0 11-8 0 4 4 0 018 0zm-.464 4.95l.707.707a1 1 0 001.414-1.414l-.707-.707a1 1 0 00-1.414 1.414zm2.12-10.607a1 1 0 010 1.414l-.706.707a1 1 0 11-1.414-1.414l.707-.707a1 1 0 011.414 0zM17 11a1 1 0 100-2h-1a1 1 0 100 2h1zm-7 4a1 1 0 011 1v1a1 1 0 11-2 0v-1a1 1 0 011-1zM5.05 6.464A1 1 0 106.465 5.05l-.708-.707a1 1 0 00-1.414 1.414l.707.707zm1.414 8.486l-.707.707a1 1 0 01-1.414-1.414l.707-.707a1 1 0 011.414 1.414zM4 11a1 1 0 100-2H3a1 1 0 000 2h1z"></path></svg>
+                        <svg class="w-5 h-5 dark:hidden" fill="currentColor" viewBox="0 0 20 20"><path d="M17.293 13.293A8 8 0 016.707 2.707a8.001 8.001 0 1010.586 10.586z"></path></svg>
+                    </button>
+                    <button id="aiAssistantBtn" class="bg-green-600 hover:bg-green-700 px-4 py-2 rounded-md text-sm font-medium transition">AI Assistant</button>
+                    <div id="authSection" class="flex space-x-2">
+                        <button id="loginBtn" class="bg-white text-primary hover:bg-gray-100 px-4 py-2 rounded-md text-sm font-medium transition">Login</button>
+                        <button id="registerBtn" class="bg-blue-700 hover:bg-blue-800 px-4 py-2 rounded-md text-sm font-medium transition">Register</button>
+                    </div>
+                    <div id="userSection" class="hidden items-center space-x-2">
+                        <span id="userName" class="text-sm"></span>
+                        <button id="profileBtn" class="bg-blue-700 hover:bg-blue-800 px-4 py-2 rounded-md text-sm font-medium transition">Profile</button>
+                        <button id="logoutBtn" class="bg-red-600 hover:bg-red-700 px-4 py-2 rounded-md text-sm font-medium transition">Logout</button>
                     </div>
                 </div>
             </div>
         </div>
+    </nav>
 
-        <!-- Main App Section -->
-        <div id="main-app" class="section">
-            <!-- Header -->
-            <header class="app-header">
-                <div class="header-left">
-                    <h1><i class="fas fa-code"></i> Devs Place</h1>
+    <!-- Mobile Menu -->
+    <div id="mobileMenu" class="md:hidden bg-primary text-white hidden">
+        <div class="px-2 pt-2 pb-3 space-y-1">
+            <a href="#home" class="nav-link block px-3 py-2 rounded-md text-base font-medium hover:bg-blue-700 transition">Home</a>
+            <a href="#learn" class="nav-link block px-3 py-2 rounded-md text-base font-medium hover:bg-blue-700 transition">Learn</a>
+            <a href="#projects" class="nav-link block px-3 py-2 rounded-md text-base font-medium hover:bg-blue-700 transition">Projects</a>
+            <a href="#apis" class="nav-link block px-3 py-2 rounded-md text-base font-medium hover:bg-blue-700 transition">Free APIs</a>
+            <a href="#chat" class="nav-link block px-3 py-2 rounded-md text-base font-medium hover:bg-blue-700 transition">Chat</a>
+            <a href="#jobs" class="nav-link block px-3 py-2 rounded-md text-base font-medium hover:bg-blue-700 transition">Jobs</a>
+        </div>
+    </div>
+
+    <!-- Main Content -->
+    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <!-- Home Section -->
+        <section id="home" class="fade-in">
+            <div class="text-center mb-12">
+                <h2 class="text-4xl font-bold text-gray-900 dark:text-white mb-4">Welcome to DEVS ARENA</h2>
+                <p class="text-xl text-gray-600 dark:text-gray-300 mb-8">The ultimate platform for developers to learn, collaborate, and build together</p>
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-8 mb-12">
+                    <div class="bg-white dark:bg-dark-card p-6 rounded-lg shadow-lg">
+                        <h3 class="text-2xl font-bold text-primary mb-4">Learn & Grow</h3>
+                        <p class="text-gray-600 dark:text-gray-300">Interactive coding lessons from beginner to advanced levels</p>
+                    </div>
+                    <div class="bg-white dark:bg-dark-card p-6 rounded-lg shadow-lg">
+                        <h3 class="text-2xl font-bold text-primary mb-4">Collaborate</h3>
+                        <p class="text-gray-600 dark:text-gray-300">Real-time chat, project sharing, and team collaboration</p>
+                    </div>
+                    <div class="bg-white dark:bg-dark-card p-6 rounded-lg shadow-lg">
+                        <h3 class="text-2xl font-bold text-primary mb-4">Build & Deploy</h3>
+                        <p class="text-gray-600 dark:text-gray-300">Access free APIs, AI assistance, and deployment tools</p>
+                    </div>
                 </div>
-                <div class="header-right">
-                    <span id="welcome-user">Welcome, </span>
-                    <button id="logout-btn" class="btn btn-outline">Logout</button>
+            </div>
+
+            <!-- Stats -->
+            <div id="stats" class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-12">
+                <div class="bg-white dark:bg-dark-card p-4 rounded-lg shadow text-center">
+                    <div class="text-2xl font-bold text-primary" id="usersCount">0</div>
+                    <div class="text-gray-600 dark:text-gray-300">Developers</div>
                 </div>
-            </header>
+                <div class="bg-white dark:bg-dark-card p-4 rounded-lg shadow text-center">
+                    <div class="text-2xl font-bold text-primary" id="projectsCount">0</div>
+                    <div class="text-gray-600 dark:text-gray-300">Projects</div>
+                </div>
+                <div class="bg-white dark:bg-dark-card p-4 rounded-lg shadow text-center">
+                    <div class="text-2xl font-bold text-primary" id="apisCount">0</div>
+                    <div class="text-gray-600 dark:text-gray-300">APIs</div>
+                </div>
+                <div class="bg-white dark:bg-dark-card p-4 rounded-lg shadow text-center">
+                    <div class="text-2xl font-bold text-primary" id="jobsCount">0</div>
+                    <div class="text-gray-600 dark:text-gray-300">Jobs</div>
+                </div>
+            </div>
+        </section>
 
-            <!-- Main Content -->
-            <div class="app-container">
-                <!-- Sidebar -->
-                <aside class="sidebar">
-                    <div class="user-profile">
-                        <div class="avatar">
-                            <i class="fas fa-user"></i>
-                        </div>
-                        <h3 id="sidebar-username">User</h3>
+        <!-- Learn Section -->
+        <section id="learn" class="fade-in hidden">
+            <h2 class="text-3xl font-bold text-gray-900 dark:text-white mb-8">Learning Hub</h2>
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
+                <div class="lesson-card bg-white dark:bg-dark-card p-6 rounded-lg shadow-lg cursor-pointer hover:shadow-xl transition" data-lesson="html">
+                    <h3 class="text-xl font-bold text-primary mb-2">HTML Basics</h3>
+                    <p class="text-gray-600 dark:text-gray-300 mb-4">Learn the foundation of web development</p>
+                    <div class="progress-bar bg-gray-200 dark:bg-gray-700 rounded-full h-2">
+                        <div class="progress-fill bg-green-500 h-2 rounded-full" style="width: 0%"></div>
                     </div>
-                    
-                    <nav class="sidebar-nav">
-                        <a href="#" class="nav-item active" data-tab="projects">
-                            <i class="fas fa-project-diagram"></i>
-                            <span>Project Feed</span>
-                        </a>
-                        <a href="#" class="nav-item" data-tab="chat">
-                            <i class="fas fa-comments"></i>
-                            <span>Global Chat</span>
-                        </a>
-                        <a href="#" class="nav-item" data-tab="ai">
-                            <i class="fas fa-robot"></i>
-                            <span>Devs AI</span>
-                        </a>
-                    </nav>
-                </aside>
-
-                <!-- Content Area -->
-                <main class="content">
-                    <!-- Projects Tab -->
-                    <div id="projects-tab" class="tab-content active">
-                        <div class="tab-header">
-                            <h2>Project Feed</h2>
-                            <button id="new-project-btn" class="btn btn-primary">
-                                <i class="fas fa-plus"></i> New Project
-                            </button>
-                        </div>
-                        
-                        <div class="projects-grid" id="projects-container">
-                            <!-- Projects will be loaded here -->
-                        </div>
+                </div>
+                <div class="lesson-card bg-white dark:bg-dark-card p-6 rounded-lg shadow-lg cursor-pointer hover:shadow-xl transition" data-lesson="css">
+                    <h3 class="text-xl font-bold text-primary mb-2">CSS Styling</h3>
+                    <p class="text-gray-600 dark:text-gray-300 mb-4">Make your websites beautiful and responsive</p>
+                    <div class="progress-bar bg-gray-200 dark:bg-gray-700 rounded-full h-2">
+                        <div class="progress-fill bg-green-500 h-2 rounded-full" style="width: 0%"></div>
                     </div>
+                </div>
+                <div class="lesson-card bg-white dark:bg-dark-card p-6 rounded-lg shadow-lg cursor-pointer hover:shadow-xl transition" data-lesson="js">
+                    <h3 class="text-xl font-bold text-primary mb-2">JavaScript</h3>
+                    <p class="text-gray-600 dark:text-gray-300 mb-4">Add interactivity to your web pages</p>
+                    <div class="progress-bar bg-gray-200 dark:bg-gray-700 rounded-full h-2">
+                        <div class="progress-fill bg-green-500 h-2 rounded-full" style="width: 0%"></div>
+                    </div>
+                </div>
+            </div>
 
-                    <!-- Chat Tab -->
-                    <div id="chat-tab" class="tab-content">
-                        <div class="tab-header">
-                            <h2>Global Chatroom</h2>
+            <!-- Lesson Content -->
+            <div id="lessonContent" class="hidden bg-white dark:bg-dark-card p-6 rounded-lg shadow-lg">
+                <div class="flex justify-between items-center mb-4">
+                    <h3 id="lessonTitle" class="text-2xl font-bold text-primary"></h3>
+                    <button id="closeLesson" class="text-gray-500 hover:text-gray-700 dark:hover:text-gray-300">✕</button>
+                </div>
+                <div id="lessonBody" class="prose dark:prose-invert max-w-none"></div>
+                <div class="mt-6">
+                    <h4 class="text-lg font-semibold mb-4">Try it Yourself</h4>
+                    <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-4">
+                        <div>
+                            <label class="block text-sm font-medium mb-2">HTML</label>
+                            <textarea id="htmlEditor" class="w-full h-40 border rounded p-2 font-mono dark:bg-gray-800 dark:text-white"></textarea>
                         </div>
-                        
-                        <div class="chat-container">
-                            <div class="chat-messages" id="chat-messages">
-                                <!-- Messages will appear here -->
-                            </div>
-                            
-                            <div class="chat-input-container">
-                                <div class="file-upload-area">
-                                    <input type="file" id="file-upload" multiple style="display: none;">
-                                    <button id="file-btn" class="btn btn-outline">
-                                        <i class="fas fa-paperclip"></i>
-                                    </button>
-                                    <span id="file-names"></span>
-                                </div>
-                                <input type="text" id="message-input" placeholder="Type your message...">
-                                <button id="send-btn" class="btn btn-primary">
-                                    <i class="fas fa-paper-plane"></i>
-                                </button>
-                            </div>
+                        <div>
+                            <label class="block text-sm font-medium mb-2">CSS</label>
+                            <textarea id="cssEditor" class="w-full h-40 border rounded p-2 font-mono dark:bg-gray-800 dark:text-white"></textarea>
                         </div>
                     </div>
-
-                    <!-- AI Tab -->
-                    <div id="ai-tab" class="tab-content">
-                        <div class="tab-header">
-                            <h2>Devs AI Assistant</h2>
-                        </div>
-                        
-                        <div class="ai-container">
-                            <div class="ai-chat" id="ai-chat">
-                                <div class="ai-message bot">
-                                    <div class="message-content">
-                                        <strong>Devs AI:</strong> Hello! I'm your coding assistant. Ask me anything about programming, and I'll help you with code examples, explanations, and best practices.
-                                    </div>
-                                </div>
-                            </div>
-                            
-                            <div class="ai-input-container">
-                                <textarea id="ai-question" placeholder="Ask a coding question... (e.g., 'How to implement authentication in Node.js?')" rows="3"></textarea>
-                                <button id="ask-ai-btn" class="btn btn-primary">
-                                    <i class="fas fa-rocket"></i> Ask AI
-                                </button>
-                            </div>
-                        </div>
+                    <div class="mb-4">
+                        <label class="block text-sm font-medium mb-2">JavaScript</label>
+                        <textarea id="jsEditor" class="w-full h-32 border rounded p-2 font-mono dark:bg-gray-800 dark:text-white"></textarea>
                     </div>
-                </main>
+                    <button id="runCode" class="bg-primary text-white px-4 py-2 rounded hover:bg-blue-700 transition">Run Code</button>
+                    <div class="mt-4 border rounded p-4 bg-white dark:bg-gray-900">
+                        <h5 class="font-semibold mb-2">Preview:</h5>
+                        <iframe id="previewFrame" class="w-full h-64 border rounded"></iframe>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Projects Section -->
+        <section id="projects" class="fade-in hidden">
+            <div class="flex justify-between items-center mb-8">
+                <h2 class="text-3xl font-bold text-gray-900 dark:text-white">Community Projects</h2>
+                <button id="createProjectBtn" class="bg-primary text-white px-4 py-2 rounded hover:bg-blue-700 transition">Create Project</button>
+            </div>
+            <div id="projectsGrid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                <!-- Projects will be loaded here -->
+            </div>
+        </section>
+
+        <!-- APIs Section -->
+        <section id="apis" class="fade-in hidden">
+            <h2 class="text-3xl font-bold text-gray-900 dark:text-white mb-8">Free API Marketplace</h2>
+            <div id="apisGrid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                <!-- APIs will be loaded here -->
+            </div>
+        </section>
+
+        <!-- Chat Section -->
+        <section id="chat" class="fade-in hidden">
+            <h2 class="text-3xl font-bold text-gray-900 dark:text-white mb-8">Community Chat</h2>
+            <div class="grid grid-cols-1 lg:grid-cols-4 gap-6">
+                <div class="lg:col-span-1 bg-white dark:bg-dark-card rounded-lg shadow-lg p-4">
+                    <h3 class="text-lg font-semibold mb-4">Rooms</h3>
+                    <div class="space-y-2">
+                        <button class="room-btn w-full text-left p-2 rounded hover:bg-gray-100 dark:hover:bg-gray-700 transition" data-room="general"># General</button>
+                        <button class="room-btn w-full text-left p-2 rounded hover:bg-gray-100 dark:hover:bg-gray-700 transition" data-room="help"># Help</button>
+                        <button class="room-btn w-full text-left p-2 rounded hover:bg-gray-100 dark:hover:bg-gray-700 transition" data-room="jobs"># Jobs</button>
+                    </div>
+                </div>
+                <div class="lg:col-span-3 bg-white dark:bg-dark-card rounded-lg shadow-lg p-4">
+                    <div id="chatMessages" class="h-96 overflow-y-auto mb-4 space-y-2"></div>
+                    <div class="flex space-x-2">
+                        <input type="text" id="messageInput" placeholder="Type your message..." class="flex-1 border rounded p-2 dark:bg-gray-800 dark:text-white" disabled>
+                        <button id="sendMessage" class="bg-primary text-white px-4 py-2 rounded hover:bg-blue-700 transition" disabled>Send</button>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Jobs Section -->
+        <section id="jobs" class="fade-in hidden">
+            <div class="flex justify-between items-center mb-8">
+                <h2 class="text-3xl font-bold text-gray-900 dark:text-white">Job Board</h2>
+                <button id="postJobBtn" class="bg-primary text-white px-4 py-2 rounded hover:bg-blue-700 transition">Post Job</button>
+            </div>
+            <div id="jobsList" class="space-y-4">
+                <!-- Jobs will be loaded here -->
+            </div>
+        </section>
+    </main>
+
+    <!-- Modals -->
+    <!-- Auth Modal -->
+    <div id="authModal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50">
+        <div class="bg-white dark:bg-dark-card rounded-lg p-6 w-full max-w-md">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="text-xl font-bold" id="authModalTitle">Login</h3>
+                <button class="close-modal text-gray-500 hover:text-gray-700">✕</button>
+            </div>
+            <form id="authForm" class="space-y-4">
+                <div id="registerFields" class="hidden space-y-4">
+                    <input type="text" name="name" placeholder="Full Name" class="w-full border rounded p-2 dark:bg-gray-800 dark:text-white">
+                    <select name="skillLevel" class="w-full border rounded p-2 dark:bg-gray-800 dark:text-white">
+                        <option value="">Select Skill Level</option>
+                        <option value="Beginner">Beginner</option>
+                        <option value="Intermediate">Intermediate</option>
+                        <option value="Expert">Expert</option>
+                    </select>
+                    <select name="role" class="w-full border rounded p-2 dark:bg-gray-800 dark:text-white">
+                        <option value="student">Student</option>
+                        <option value="professional">Professional</option>
+                    </select>
+                </div>
+                <input type="email" name="email" placeholder="Email" class="w-full border rounded p-2 dark:bg-gray-800 dark:text-white">
+                <input type="password" name="password" placeholder="Password" class="w-full border rounded p-2 dark:bg-gray-800 dark:text-white">
+                <button type="submit" class="w-full bg-primary text-white py-2 rounded hover:bg-blue-700 transition">Submit</button>
+            </form>
+            <div class="mt-4 text-center">
+                <button id="switchAuthMode" class="text-primary hover:underline">Switch to Register</button>
+            </div>
+            <div class="mt-4 text-center">
+                <button id="githubAuth" class="bg-gray-800 text-white px-4 py-2 rounded hover:bg-gray-700 transition">Login with GitHub</button>
             </div>
         </div>
     </div>
 
-    <!-- Modals -->
-    <div id="project-modal" class="modal">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h3>Share New Project</h3>
-                <span class="close">&times;</span>
+    <!-- AI Assistant Modal -->
+    <div id="aiModal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50">
+        <div class="bg-white dark:bg-dark-card rounded-lg p-6 w-full max-w-2xl h-3/4 flex flex-col">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="text-xl font-bold">AI Coding Assistant</h3>
+                <button class="close-modal text-gray-500 hover:text-gray-700">✕</button>
             </div>
-            <form id="project-form">
-                <div class="form-group">
-                    <input type="text" id="project-title" placeholder="Project Title" required>
-                </div>
-                <div class="form-group">
-                    <textarea id="project-description" placeholder="Project Description" rows="3" required></textarea>
-                </div>
-                <div class="form-group">
-                    <textarea id="project-code" placeholder="Paste your code here (optional)" rows="6"></textarea>
-                </div>
-                <div class="form-actions">
-                    <button type="button" class="btn btn-outline" id="cancel-project">Cancel</button>
-                    <button type="submit" class="btn btn-primary">Share Project</button>
-                </div>
+            <div id="aiChat" class="flex-1 overflow-y-auto mb-4 space-y-4 p-2 border rounded dark:bg-gray-800"></div>
+            <div class="flex space-x-2">
+                <input type="text" id="aiInput" placeholder="Ask about code, debugging, or best practices..." class="flex-1 border rounded p-2 dark:bg-gray-800 dark:text-white">
+                <button id="sendAiMessage" class="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700 transition">Send</button>
+            </div>
+            <div id="aiQueriesLeft" class="text-sm text-gray-600 dark:text-gray-400 mt-2"></div>
+        </div>
+    </div>
+
+    <!-- Project Creation Modal -->
+    <div id="projectModal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50">
+        <div class="bg-white dark:bg-dark-card rounded-lg p-6 w-full max-w-2xl">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="text-xl font-bold">Create New Project</h3>
+                <button class="close-modal text-gray-500 hover:text-gray-700">✕</button>
+            </div>
+            <form id="projectForm" class="space-y-4">
+                <input type="text" name="title" placeholder="Project Title" class="w-full border rounded p-2 dark:bg-gray-800 dark:text-white" required>
+                <textarea name="description" placeholder="Project Description" class="w-full border rounded p-2 dark:bg-gray-800 dark:text-white" rows="3"></textarea>
+                <input type="text" name="tags" placeholder="Tags (comma separated)" class="w-full border rounded p-2 dark:bg-gray-800 dark:text-white">
+                <input type="text" name="category" placeholder="Category" class="w-full border rounded p-2 dark:bg-gray-800 dark:text-white">
+                <input type="file" name="files" multiple class="w-full border rounded p-2 dark:bg-gray-800">
+                <button type="submit" class="w-full bg-primary text-white py-2 rounded hover:bg-blue-700 transition">Create Project</button>
             </form>
         </div>
     </div>
 
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.24.1/prism.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.24.1/components/prism-javascript.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.24.1/components/prism-python.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.24.1/components/prism-java.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.24.1/components/prism-css.min.js"></script>
-    <script src="/socket.io/socket.io.js"></script>
-    <script src="script.js"></script>
+    <!-- Job Posting Modal -->
+    <div id="jobModal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50">
+        <div class="bg-white dark:bg-dark-card rounded-lg p-6 w-full max-w-2xl">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="text-xl font-bold">Post Job Opportunity</h3>
+                <button class="close-modal text-gray-500 hover:text-gray-700">✕</button>
+            </div>
+            <form id="jobForm" class="space-y-4">
+                <input type="text" name="title" placeholder="Job Title" class="w-full border rounded p-2 dark:bg-gray-800 dark:text-white" required>
+                <textarea name="description" placeholder="Job Description" class="w-full border rounded p-2 dark:bg-gray-800 dark:text-white" rows="4" required></textarea>
+                <input type="text" name="company" placeholder="Company" class="w-full border rounded p-2 dark:bg-gray-800 dark:text-white">
+                <input type="text" name="skills" placeholder="Required Skills (comma separated)" class="w-full border rounded p-2 dark:bg-gray-800 dark:text-white">
+                <select name="type" class="w-full border rounded p-2 dark:bg-gray-800 dark:text-white">
+                    <option value="full-time">Full Time</option>
+                    <option value="part-time">Part Time</option>
+                    <option value="contract">Contract</option>
+                    <option value="internship">Internship</option>
+                </select>
+                <input type="text" name="location" placeholder="Location" class="w-full border rounded p-2 dark:bg-gray-800 dark:text-white">
+                <div class="flex items-center">
+                    <input type="checkbox" name="remote" id="remote" class="mr-2">
+                    <label for="remote">Remote Work Available</label>
+                </div>
+                <button type="submit" class="w-full bg-primary text-white py-2 rounded hover:bg-blue-700 transition">Post Job</button>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        class DevsArenaApp {
+            constructor() {
+                this.socket = null;
+                this.currentUser = null;
+                this.currentRoom = 'general';
+                this.init();
+            }
+
+            init() {
+                this.setupEventListeners();
+                this.checkAuthStatus();
+                this.loadStats();
+                this.setupTheme();
+            }
+
+            setupEventListeners() {
+                // Navigation
+                document.querySelectorAll('.nav-link').forEach(link => {
+                    link.addEventListener('click', (e) => {
+                        e.preventDefault();
+                        this.showSection(link.getAttribute('href').substring(1));
+                    });
+                });
+
+                // Auth
+                document.getElementById('loginBtn').addEventListener('click', () => this.showAuthModal('login'));
+                document.getElementById('registerBtn').addEventListener('click', () => this.showAuthModal('register'));
+                document.getElementById('logoutBtn').addEventListener('click', () => this.logout());
+                document.getElementById('switchAuthMode').addEventListener('click', () => this.switchAuthMode());
+                document.getElementById('githubAuth').addEventListener('click', () => this.githubAuth());
+                document.getElementById('authForm').addEventListener('submit', (e) => this.handleAuth(e));
+
+                // Theme
+                document.getElementById('themeToggle').addEventListener('click', () => this.toggleTheme());
+
+                // AI Assistant
+                document.getElementById('aiAssistantBtn').addEventListener('click', () => this.showAiModal());
+                document.getElementById('sendAiMessage').addEventListener('click', () => this.sendAiMessage());
+
+                // Projects
+                document.getElementById('createProjectBtn').addEventListener('click', () => this.showProjectModal());
+                document.getElementById('projectForm').addEventListener('submit', (e) => this.createProject(e));
+
+                // Jobs
+                document.getElementById('postJobBtn').addEventListener('click', () => this.showJobModal());
+                document.getElementById('jobForm').addEventListener('submit', (e) => this.postJob(e));
+
+                // Chat
+                document.querySelectorAll('.room-btn').forEach(btn => {
+                    btn.addEventListener('click', () => this.joinRoom(btn.dataset.room));
+                });
+                document.getElementById('sendMessage').addEventListener('click', () => this.sendMessage());
+
+                // Learning
+                document.querySelectorAll('.lesson-card').forEach(card => {
+                    card.addEventListener('click', () => this.showLesson(card.dataset.lesson));
+                });
+                document.getElementById('closeLesson').addEventListener('click', () => this.hideLesson());
+                document.getElementById('runCode').addEventListener('click', () => this.runCode());
+
+                // Modals
+                document.querySelectorAll('.close-modal').forEach(btn => {
+                    btn.addEventListener('click', () => this.closeModals());
+                });
+
+                // Message input enter key
+                document.getElementById('messageInput').addEventListener('keypress', (e) => {
+                    if (e.key === 'Enter') this.sendMessage();
+                });
+
+                document.getElementById('aiInput').addEventListener('keypress', (e) => {
+                    if (e.key === 'Enter') this.sendAiMessage();
+                });
+            }
+
+            async checkAuthStatus() {
+                try {
+                    const response = await fetch('/api/user');
+                    if (response.ok) {
+                        const data = await response.json();
+                        this.currentUser = data.user;
+                        this.updateUI();
+                        this.connectSocket();
+                    }
+                } catch (error) {
+                    console.log('Not authenticated');
+                }
+            }
+
+            updateUI() {
+                if (this.currentUser) {
+                    document.getElementById('authSection').classList.add('hidden');
+                    document.getElementById('userSection').classList.remove('hidden');
+                    document.getElementById('userName').textContent = this.currentUser.name;
+                    document.getElementById('createProjectBtn').disabled = false;
+                    document.getElementById('postJobBtn').disabled = false;
+                    document.getElementById('messageInput').disabled = false;
+                    document.getElementById('sendMessage').disabled = false;
+                } else {
+                    document.getElementById('authSection').classList.remove('hidden');
+                    document.getElementById('userSection').classList.add('hidden');
+                    document.getElementById('createProjectBtn').disabled = true;
+                    document.getElementById('postJobBtn').disabled = true;
+                    document.getElementById('messageInput').disabled = true;
+                    document.getElementById('sendMessage').disabled = true;
+                }
+            }
+
+            showSection(section) {
+                document.querySelectorAll('section').forEach(sec => sec.classList.add('hidden'));
+                document.getElementById(section).classList.remove('hidden');
+                
+                if (section === 'projects') this.loadProjects();
+                if (section === 'apis') this.loadAPIs();
+                if (section === 'jobs') this.loadJobs();
+                if (section === 'chat') this.loadChatMessages();
+            }
+
+            showAuthModal(mode) {
+                document.getElementById('authModal').classList.remove('hidden');
+                document.getElementById('authModalTitle').textContent = mode === 'login' ? 'Login' : 'Register';
+                document.getElementById('registerFields').classList.toggle('hidden', mode === 'login');
+                document.getElementById('switchAuthMode').textContent = mode === 'login' ? 'Switch to Register' : 'Switch to Login';
+            }
+
+            switchAuthMode() {
+                const currentMode = document.getElementById('authModalTitle').textContent.toLowerCase();
+                this.showAuthModal(currentMode === 'login' ? 'register' : 'login');
+            }
+
+            async handleAuth(e) {
+                e.preventDefault();
+                const formData = new FormData(e.target);
+                const data = Object.fromEntries(formData);
+                const isLogin = document.getElementById('authModalTitle').textContent === 'Login';
+
+                try {
+                    const response = await fetch(`/api/${isLogin ? 'login' : 'register'}`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(data)
+                    });
+
+                    if (response.ok) {
+                        const result = await response.json();
+                        this.currentUser = result.user;
+                        this.updateUI();
+                        this.closeModals();
+                        this.connectSocket();
+                        this.loadStats();
+                    } else {
+                        const error = await response.json();
+                        alert(error.error);
+                    }
+                } catch (error) {
+                    alert('Authentication failed');
+                }
+            }
+
+            githubAuth() {
+                window.location.href = '/auth/github';
+            }
+
+            async logout() {
+                try {
+                    await fetch('/api/logout', { method: 'POST' });
+                    this.currentUser = null;
+                    this.updateUI();
+                    if (this.socket) this.socket.disconnect();
+                } catch (error) {
+                    console.error('Logout failed');
+                }
+            }
+
+            connectSocket() {
+                this.socket = io();
+                
+                this.socket.on('chat-message', (message) => {
+                    this.displayMessage(message);
+                });
+
+                this.socket.on('user-joined', (data) => {
+                    this.displaySystemMessage(`User joined the room`);
+                });
+
+                this.socket.emit('join-room', this.currentRoom);
+            }
+
+            joinRoom(room) {
+                if (this.socket) {
+                    this.socket.emit('leave-room', this.currentRoom);
+                    this.currentRoom = room;
+                    this.socket.emit('join-room', room);
+                    document.getElementById('chatMessages').innerHTML = '';
+                    this.loadChatMessages();
+                }
+            }
+
+            async loadChatMessages() {
+                if (!this.currentUser) return;
+                
+                try {
+                    const response = await fetch(`/api/chat/messages/${this.currentRoom}`);
+                    if (response.ok) {
+                        const messages = await response.json();
+                        messages.forEach(msg => this.displayMessage(msg));
+                    }
+                } catch (error) {
+                    console.error('Failed to load messages');
+                }
+            }
+
+            displayMessage(message) {
+                const messagesDiv = document.getElementById('chatMessages');
+                const messageDiv = document.createElement('div');
+                messageDiv.className = 'message-enter p-2 rounded bg-gray-50 dark:bg-gray-800';
+                messageDiv.innerHTML = `
+                    <div class="flex justify-between">
+                        <span class="font-semibold">${message.userId?.name || 'Unknown'}</span>
+                        <span class="text-sm text-gray-500">${new Date(message.timestamp).toLocaleTimeString()}</span>
+                    </div>
+                    <div>${this.escapeHtml(message.text)}</div>
+                `;
+                messagesDiv.appendChild(messageDiv);
+                messagesDiv.scrollTop = messagesDiv.scrollHeight;
+            }
+
+            displaySystemMessage(text) {
+                const messagesDiv = document.getElementById('chatMessages');
+                const messageDiv = document.createElement('div');
+                messageDiv.className = 'text-center text-gray-500 text-sm italic';
+                messageDiv.textContent = text;
+                messagesDiv.appendChild(messageDiv);
+                messagesDiv.scrollTop = messagesDiv.scrollHeight;
+            }
+
+            sendMessage() {
+                const input = document.getElementById('messageInput');
+                const text = input.value.trim();
+                
+                if (text && this.socket) {
+                    this.socket.emit('chat-message', {
+                        room: this.currentRoom,
+                        userId: this.currentUser.id,
+                        text: text
+                    });
+                    input.value = '';
+                }
+            }
+
+            async loadProjects() {
+                try {
+                    const response = await fetch('/api/projects');
+                    if (response.ok) {
+                        const projects = await response.json();
+                        const grid = document.getElementById('projectsGrid');
+                        grid.innerHTML = projects.map(project => `
+                            <div class="bg-white dark:bg-dark-card rounded-lg shadow-lg p-4">
+                                <h3 class="text-xl font-bold text-primary mb-2">${this.escapeHtml(project.title)}</h3>
+                                <p class="text-gray-600 dark:text-gray-300 mb-4">${this.escapeHtml(project.description)}</p>
+                                <div class="flex justify-between items-center">
+                                    <span class="text-sm text-gray-500">by ${project.userId?.name}</span>
+                                    <button class="like-btn bg-gray-200 dark:bg-gray-700 px-3 py-1 rounded text-sm" data-id="${project._id}">
+                                        ♥ ${project.likes?.length || 0}
+                                    </button>
+                                </div>
+                            </div>
+                        `).join('');
+
+                        // Add like button listeners
+                        document.querySelectorAll('.like-btn').forEach(btn => {
+                            btn.addEventListener('click', () => this.likeProject(btn.dataset.id));
+                        });
+                    }
+                } catch (error) {
+                    console.error('Failed to load projects');
+                }
+            }
+
+            async likeProject(projectId) {
+                if (!this.currentUser) return;
+                
+                try {
+                    const response = await fetch(`/api/projects/${projectId}/like`, {
+                        method: 'POST'
+                    });
+                    
+                    if (response.ok) {
+                        this.loadProjects();
+                    }
+                } catch (error) {
+                    console.error('Like failed');
+                }
+            }
+
+            showProjectModal() {
+                if (!this.currentUser) return;
+                document.getElementById('projectModal').classList.remove('hidden');
+            }
+
+            async createProject(e) {
+                e.preventDefault();
+                if (!this.currentUser) return;
+
+                const formData = new FormData(e.target);
+                
+                try {
+                    const response = await fetch('/api/projects', {
+                        method: 'POST',
+                        body: formData
+                    });
+
+                    if (response.ok) {
+                        this.closeModals();
+                        this.loadProjects();
+                    } else {
+                        alert('Failed to create project');
+                    }
+                } catch (error) {
+                    alert('Project creation failed');
+                }
+            }
+
+            async loadAPIs() {
+                try {
+                    const response = await fetch('/api/apis');
+                    if (response.ok) {
+                        const apis = await response.json();
+                        const grid = document.getElementById('apisGrid');
+                        grid.innerHTML = apis.map(api => `
+                            <div class="bg-white dark:bg-dark-card rounded-lg shadow-lg p-4">
+                                <h3 class="text-xl font-bold text-primary mb-2">${this.escapeHtml(api.name)}</h3>
+                                <p class="text-gray-600 dark:text-gray-300 mb-2">${this.escapeHtml(api.description)}</p>
+                                <div class="text-sm text-gray-500 mb-2">Category: ${api.category}</div>
+                                <div class="text-sm font-mono bg-gray-100 dark:bg-gray-800 p-2 rounded">${api.endpoint}</div>
+                                <button class="test-api-btn mt-2 bg-primary text-white px-3 py-1 rounded text-sm" data-endpoint="${api.endpoint}">
+                                    Test API
+                                </button>
+                            </div>
+                        `).join('');
+
+                        // Add API test listeners
+                        document.querySelectorAll('.test-api-btn').forEach(btn => {
+                            btn.addEventListener('click', () => this.testAPI(btn.dataset.endpoint));
+                        });
+                    }
+                } catch (error) {
+                    console.error('Failed to load APIs');
+                }
+            }
+
+            async testAPI(endpoint) {
+                try {
+                    const response = await fetch('/api/apis/test', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ url: endpoint, method: 'GET' })
+                    });
+
+                    if (response.ok) {
+                        const result = await response.json();
+                        alert(`API Response: ${JSON.stringify(result.data, null, 2)}`);
+                    }
+                } catch (error) {
+                    alert('API test failed');
+                }
+            }
+
+            async loadJobs() {
+                try {
+                    const response = await fetch('/api/jobs');
+                    if (response.ok) {
+                        const jobs = await response.json();
+                        const list = document.getElementById('jobsList');
+                        list.innerHTML = jobs.map(job => `
+                            <div class="bg-white dark:bg-dark-card rounded-lg shadow-lg p-4">
+                                <h3 class="text-xl font-bold text-primary mb-2">${this.escapeHtml(job.title)}</h3>
+                                <p class="text-gray-600 dark:text-gray-300 mb-2">${this.escapeHtml(job.description)}</p>
+                                <div class="flex justify-between items-center text-sm text-gray-500">
+                                    <span>${job.company} • ${job.type}</span>
+                                    <span>${job.location} ${job.remote ? '(Remote)' : ''}</span>
+                                </div>
+                            </div>
+                        `).join('');
+                    }
+                } catch (error) {
+                    console.error('Failed to load jobs');
+                }
+            }
+
+            showJobModal() {
+                if (!this.currentUser) return;
+                document.getElementById('jobModal').classList.remove('hidden');
+            }
+
+            async postJob(e) {
+                e.preventDefault();
+                if (!this.currentUser) return;
+
+                const formData = new FormData(e.target);
+                const data = Object.fromEntries(formData);
+                data.skills = data.skills ? data.skills.split(',').map(s => s.trim()) : [];
+                data.remote = document.getElementById('remote').checked;
+
+                try {
+                    const response = await fetch('/api/jobs', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(data)
+                    });
+
+                    if (response.ok) {
+                        this.closeModals();
+                        this.loadJobs();
+                    } else {
+                        alert('Failed to post job');
+                    }
+                } catch (error) {
+                    alert('Job posting failed');
+                }
+            }
+
+            showAiModal() {
+                document.getElementById('aiModal').classList.remove('hidden');
+                if (this.currentUser) {
+                    document.getElementById('aiQueriesLeft').textContent = `Queries left today: ${10 - (this.currentUser.aiQueriesToday || 0)}`;
+                }
+            }
+
+            async sendAiMessage() {
+                const input = document.getElementById('aiInput');
+                const message = input.value.trim();
+                
+                if (!message || !this.currentUser) return;
+
+                const chat = document.getElementById('aiChat');
+                chat.innerHTML += `<div class="text-right"><strong>You:</strong> ${this.escapeHtml(message)}</div>`;
+                input.value = '';
+
+                try {
+                    const response = await fetch('/api/ai/chat', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ message })
+                    });
+
+                    if (response.ok) {
+                        const result = await response.json();
+                        chat.innerHTML += `<div class="text-left"><strong>AI:</strong> ${this.escapeHtml(result.response)}</div>`;
+                        document.getElementById('aiQueriesLeft').textContent = `Queries left today: ${result.queriesLeft}`;
+                    } else {
+                        chat.innerHTML += `<div class="text-left text-red-500"><strong>AI:</strong> Service unavailable</div>`;
+                    }
+                } catch (error) {
+                    chat.innerHTML += `<div class="text-left text-red-500"><strong>AI:</strong> Connection failed</div>`;
+                }
+
+                chat.scrollTop = chat.scrollHeight;
+            }
+
+            showLesson(lesson) {
+                const lessons = {
+                    html: {
+                        title: 'HTML Basics',
+                        content: `
+                            <h4>Introduction to HTML</h4>
+                            <p>HTML (HyperText Markup Language) is the standard markup language for creating web pages.</p>
+                            <pre><code class="language-html">&lt;!DOCTYPE html&gt;
+&lt;html&gt;
+&lt;head&gt;
+    &lt;title&gt;My First Page&lt;/title&gt;
+&lt;/head&gt;
+&lt;body&gt;
+    &lt;h1&gt;Hello World!&lt;/h1&gt;
+    &lt;p&gt;This is a paragraph.&lt;/p&gt;
+&lt;/body&gt;
+&lt;/html&gt;</code></pre>
+                            <h4>Exercise: Create a simple page with a heading and paragraph</h4>
+                        `
+                    },
+                    css: {
+                        title: 'CSS Styling',
+                        content: `
+                            <h4>Introduction to CSS</h4>
+                            <p>CSS (Cascading Style Sheets) is used to style and layout web pages.</p>
+                            <pre><code class="language-css">body {
+    font-family: Arial, sans-serif;
+    margin: 0;
+    padding: 20px;
+    background-color: #f0f0f0;
+}
+
+h1 {
+    color: #2563eb;
+    text-align: center;
+}</code></pre>
+                        `
+                    },
+                    js: {
+                        title: 'JavaScript Fundamentals',
+                        content: `
+                            <h4>Introduction to JavaScript</h4>
+                            <p>JavaScript makes web pages interactive and dynamic.</p>
+                            <pre><code class="language-javascript">// Simple function
+function greet(name) {
+    return 'Hello, ' + name + '!';
+}
+
+// Event handling
+document.getElementById('myButton').addEventListener('click', function() {
+    alert('Button clicked!');
+});</code></pre>
+                        `
+                    }
+                };
+
+                const lessonData = lessons[lesson];
+                if (lessonData) {
+                    document.getElementById('lessonTitle').textContent = lessonData.title;
+                    document.getElementById('lessonBody').innerHTML = lessonData.content;
+                    document.getElementById('lessonContent').classList.remove('hidden');
+                    Prism.highlightAll();
+                }
+            }
+
+            hideLesson() {
+                document.getElementById('lessonContent').classList.add('hidden');
+            }
+
+            runCode() {
+                const html = document.getElementById('htmlEditor').value;
+                const css = document.getElementById('cssEditor').value;
+                const js = document.getElementById('jsEditor').value;
+                
+                const iframe = document.getElementById('previewFrame');
+                const iframeDoc = iframe.contentDocument || iframe.contentWindow.document;
+                
+                iframeDoc.open();
+                iframeDoc.write(`
+                    <!DOCTYPE html>
+                    <html>
+                    <head>
+                        <style>${css}</style>
+                    </head>
+                    <body>${html}
+                        <script>${js}<\/script>
+                    </body>
+                    </html>
+                `);
+                iframeDoc.close();
+            }
+
+            async loadStats() {
+                try {
+                    const responses = await Promise.all([
+                        fetch('/api/projects'),
+                        fetch('/api/apis'),
+                        fetch('/api/jobs')
+                    ]);
+
+                    const projects = await responses[0].json();
+                    const apis = await responses[1].json();
+                    const jobs = await responses[2].json();
+
+                    document.getElementById('projectsCount').textContent = projects.length;
+                    document.getElementById('apisCount').textContent = apis.length;
+                    document.getElementById('jobsCount').textContent = jobs.length;
+                } catch (error) {
+                    console.error('Failed to load stats');
+                }
+            }
+
+            setupTheme() {
+                if (localStorage.theme === 'dark' || (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+                    document.documentElement.classList.add('dark');
+                } else {
+                    document.documentElement.classList.remove('dark');
+                }
+            }
+
+            toggleTheme() {
+                document.documentElement.classList.toggle('dark');
+                localStorage.theme = document.documentElement.classList.contains('dark') ? 'dark' : 'light';
+            }
+
+            closeModals() {
+                document.querySelectorAll('[id$="Modal"]').forEach(modal => {
+                    modal.classList.add('hidden');
+                });
+            }
+
+            escapeHtml(unsafe) {
+                if (!unsafe) return '';
+                return unsafe
+                    .replace(/&/g, "&amp;")
+                    .replace(/</g, "&lt;")
+                    .replace(/>/g, "&gt;")
+                    .replace(/"/g, "&quot;")
+                    .replace(/'/g, "&#039;");
+            }
+        }
+
+        // Initialize the app when DOM is loaded
+        document.addEventListener('DOMContentLoaded', () => {
+            new DevsArenaApp();
+        });
+    </script>
 </body>
-                        </html>
+    </html>
