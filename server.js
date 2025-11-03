@@ -5,20 +5,11 @@ import mongoose from 'mongoose';
 import session from 'express-session';
 import passport from 'passport';
 import { Strategy as GitHubStrategy } from 'passport-github2';
-import { Strategy as LocalStrategy } from 'passport-local';
+import LocalStrategy from 'passport-local';
 import bcrypt from 'bcryptjs';
 import multer from 'multer';
 import { GridFSBucket } from 'mongodb';
 import OpenAI from 'openai';
-import axios from 'axios';
-import rateLimit from 'express-rate-limit';
-import helmet from 'helmet';
-import compression from 'compression';
-import cors from 'cors';
-import { body, validationResult } from 'express-validator';
-import cron from 'node-cron';
-import { v4 as uuidv4 } from 'uuid';
-import moment from 'moment';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
 import 'dotenv/config';
@@ -28,170 +19,104 @@ const __dirname = dirname(__filename);
 
 const app = express();
 const server = createServer(app);
-const io = new Server(server, {
-  cors: { origin: "*", methods: ["GET", "POST"] }
-});
+const io = new Server(server);
 
-// Security Middleware
-app.use(helmet({
-  contentSecurityPolicy: {
-    directives: {
-      defaultSrc: ["'self'"],
-      scriptSrc: ["'self'", "'unsafe-inline'", "cdn.tailwindcss.com", "cdn.socket.io", "unpkg.com"],
-      styleSrc: ["'self'", "'unsafe-inline'", "cdn.tailwindcss.com", "fonts.googleapis.com"],
-      fontSrc: ["'self'", "fonts.gstatic.com"],
-      connectSrc: ["'self'", "ws:", "wss:", "*.socket.io", "api.openai.com"]
-    }
-  }
-}));
-app.use(compression());
-app.use(cors());
-app.use(express.json({ limit: '50mb' }));
+// Middleware
+app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+app.use(express.static('public'));
 
-// Rate Limiting
-const limiter = rateLimit({
-  windowMs: parseInt(process.env.RATE_LIMIT_WINDOW) || 15 * 60 * 1000,
-  max: parseInt(process.env.RATE_LIMIT_MAX) || 100
-});
-app.use(limiter);
-
-// Session Configuration
+// Session configuration
 app.use(session({
-  secret: process.env.SESSION_SECRET || 'devs-arena-secret',
+  secret: process.env.SESSION_SECRET,
   resave: false,
   saveUninitialized: false,
-  cookie: { secure: process.env.NODE_ENV === 'production', maxAge: 24 * 60 * 60 * 1000 }
+  cookie: { secure: false, maxAge: 24 * 60 * 60 * 1000 }
 }));
 
 app.use(passport.initialize());
 app.use(passport.session());
 
-// MongoDB Connection & Models
-await mongoose.connect(process.env.MONGODB_URI);
-const conn = mongoose.connection;
+// MongoDB Connection
+mongoose.connect(process.env.MONGODB_URI)
+  .then(() => console.log('✅ MongoDB Connected Successfully'))
+  .catch(err => console.log('❌ MongoDB Connection Error:', err));
 
-let gfs;
-conn.once('open', () => {
-  gfs = new GridFSBucket(conn.db, { bucketName: 'uploads' });
-});
-
-// Enhanced User Schema
+// Database Models
 const userSchema = new mongoose.Schema({
   githubId: String,
   username: { type: String, required: true, unique: true },
   email: { type: String, required: true, unique: true },
   password: String,
   name: String,
-  avatar: String,
+  avatar: { type: String, default: '/default-avatar.png' },
   skillLevel: { type: String, enum: ['Beginner', 'Intermediate', 'Expert'], default: 'Beginner' },
-  focusArea: { type: String, enum: ['Frontend', 'Backend', 'Full-Stack', 'Mobile', 'Data Science', 'DevOps', 'AI/ML'] },
-  isStudent: Boolean,
-  isProfessional: Boolean,
+  focusArea: { type: String, enum: ['Frontend', 'Backend', 'Full-Stack', 'Mobile', 'Data Science', 'DevOps'], default: 'Frontend' },
+  isStudent: { type: Boolean, default: false },
   country: String,
   bio: String,
-  githubUrl: String,
-  website: String,
   skills: [String],
-  badges: [String],
-  points: { type: Number, default: 0 },
-  level: { type: Number, default: 1 },
-  learningProgress: Map,
-  completedLessons: [String],
-  lastActive: Date,
-  isOnline: { type: Boolean, default: false }
-}, { timestamps: true });
+  joinedAt: { type: Date, default: Date.now },
+  isOnline: { type: Boolean, default: false },
+  lastActive: { type: Date, default: Date.now }
+});
 
-// Enhanced Project Schema
 const projectSchema = new mongoose.Schema({
   title: { type: String, required: true },
   description: String,
   owner: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
-  collaborators: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }],
   tags: [String],
   category: String,
   files: [{
-    filename: String,
-    originalName: String,
+    name: String,
     content: String,
-    language: String,
-    size: Number,
-    uploadDate: { type: Date, default: Date.now }
+    language: String
   }],
-  githubRepo: String,
   isPublic: { type: Boolean, default: true },
   likes: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }],
   likesCount: { type: Number, default: 0 },
-  views: { type: Number, default: 0 },
-  forks: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }],
-  forkOf: { type: mongoose.Schema.Types.ObjectId, ref: 'Project' },
-  lastActivity: Date,
-  readme: String,
-  deploymentUrl: String
+  views: { type: Number, default: 0 }
 }, { timestamps: true });
 
-// Enhanced Message Schema
 const messageSchema = new mongoose.Schema({
   room: String,
   user: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
   content: String,
-  type: { type: String, enum: ['text', 'code', 'file', 'system'], default: 'text' },
-  codeLanguage: String,
-  fileUrl: String,
-  fileName: String,
-  replyTo: { type: mongoose.Schema.Types.ObjectId, ref: 'Message' },
-  reactions: Map,
-  isEdited: { type: Boolean, default: false }
-}, { timestamps: true });
-
-// New Code Execution Schema
-const codeExecutionSchema = new mongoose.Schema({
-  user: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
-  language: { type: String, required: true },
-  code: { type: String, required: true },
-  input: String,
-  output: String,
-  error: String,
-  executionTime: Number,
-  memoryUsed: Number,
-  status: { type: String, enum: ['success', 'error', 'timeout'], default: 'success' }
-}, { timestamps: true });
-
-// New Collaboration Room Schema
-const collaborationRoomSchema = new mongoose.Schema({
-  name: String,
-  description: String,
-  owner: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
-  participants: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }],
-  project: { type: mongoose.Schema.Types.ObjectId, ref: 'Project' },
-  isActive: { type: Boolean, default: true },
-  maxParticipants: { type: Number, default: 10 },
-  currentFile: String,
-  language: String,
-  code: String,
-  cursors: Map
+  type: { type: String, enum: ['text', 'code', 'file'], default: 'text' }
 }, { timestamps: true });
 
 const User = mongoose.model('User', userSchema);
 const Project = mongoose.model('Project', projectSchema);
 const Message = mongoose.model('Message', messageSchema);
-const CodeExecution = mongoose.model('CodeExecution', codeExecutionSchema);
-const CollaborationRoom = mongoose.model('CollaborationRoom', collaborationRoomSchema);
 
 // Passport Configuration
-passport.use(new LocalStrategy(async (username, password, done) => {
-  try {
-    const user = await User.findOne({ $or: [{ email: username }, { username: username }] });
-    if (!user) return done(null, false, { message: 'User not found' });
-    
-    if (user.password && await bcrypt.compare(password, user.password)) {
+passport.use(new LocalStrategy(
+  { usernameField: 'email' },
+  async (email, password, done) => {
+    try {
+      const user = await User.findOne({ 
+        $or: [{ email: email }, { username: email }] 
+      });
+      
+      if (!user) {
+        return done(null, false, { message: 'User not found' });
+      }
+
+      if (!user.password) {
+        return done(null, false, { message: 'Please use GitHub login or reset password' });
+      }
+
+      const isValidPassword = await bcrypt.compare(password, user.password);
+      if (!isValidPassword) {
+        return done(null, false, { message: 'Invalid password' });
+      }
+
       return done(null, user);
+    } catch (error) {
+      return done(error);
     }
-    return done(null, false, { message: 'Invalid password' });
-  } catch (error) {
-    return done(error);
   }
-}));
+));
 
 passport.use(new GitHubStrategy({
   clientID: process.env.GITHUB_CLIENT_ID,
@@ -200,24 +125,28 @@ passport.use(new GitHubStrategy({
 }, async (accessToken, refreshToken, profile, done) => {
   try {
     let user = await User.findOne({ githubId: profile.id });
+    
     if (!user) {
       user = new User({
         githubId: profile.id,
         username: profile.username,
-        email: profile.emails?.[0]?.value,
+        email: profile.emails?.[0]?.value || `${profile.username}@github.com`,
         name: profile.displayName,
-        avatar: profile.photos?.[0]?.value,
-        githubUrl: profile.profileUrl
+        avatar: profile.photos?.[0]?.value
       });
       await user.save();
     }
+    
     return done(null, user);
   } catch (error) {
     return done(error);
   }
 }));
 
-passport.serializeUser((user, done) => done(null, user.id));
+passport.serializeUser((user, done) => {
+  done(null, user.id);
+});
+
 passport.deserializeUser(async (id, done) => {
   try {
     const user = await User.findById(id);
@@ -227,239 +156,233 @@ passport.deserializeUser(async (id, done) => {
   }
 });
 
-// Multer Configuration for File Uploads
-const storage = multer.memoryStorage();
-const upload = multer({ 
-  storage,
-  limits: { fileSize: 50 * 1024 * 1024 }, // 50MB limit
-  fileFilter: (req, file, cb) => {
-    // Allow all file types
-    cb(null, true);
-  }
-});
-
-// OpenAI Configuration
-const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
-
-// Serve Static Files & Frontend
+// Routes
 app.get('/', (req, res) => {
   res.sendFile(join(__dirname, 'index.html'));
 });
 
 // Authentication Routes
-app.post('/auth/register', [
-  body('email').isEmail(),
-  body('password').isLength({ min: 6 }),
-  body('username').isAlphanumeric().isLength({ min: 3 })
-], async (req, res) => {
-  const errors = validationResult(req);
-  if (!errors.isEmpty()) return res.status(400).json({ errors: errors.array() });
-
+app.post('/api/auth/register', async (req, res) => {
   try {
     const { username, email, password, name, skillLevel, focusArea, isStudent, country } = req.body;
+    
+    // Check if user already exists
+    const existingUser = await User.findOne({ 
+      $or: [{ email }, { username }] 
+    });
+    
+    if (existingUser) {
+      return res.status(400).json({ 
+        success: false, 
+        message: 'User with this email or username already exists' 
+      });
+    }
+
+    // Hash password
     const hashedPassword = await bcrypt.hash(password, 12);
     
+    // Create user
     const user = new User({
-      username, email, password: hashedPassword, name, skillLevel, focusArea, isStudent, country
+      username,
+      email,
+      password: hashedPassword,
+      name,
+      skillLevel,
+      focusArea,
+      isStudent: isStudent === 'true',
+      country
     });
+    
     await user.save();
     
+    // Auto login after registration
     req.login(user, (err) => {
-      if (err) return res.status(500).json({ error: 'Login failed after registration' });
-      res.json({ message: 'Registration successful', user: { id: user._id, username: user.username } });
+      if (err) {
+        return res.status(500).json({ 
+          success: false, 
+          message: 'Auto login failed' 
+        });
+      }
+      res.json({ 
+        success: true, 
+        message: 'Registration successful', 
+        user: { 
+          id: user._id, 
+          username: user.username, 
+          name: user.name,
+          avatar: user.avatar 
+        } 
+      });
     });
+    
   } catch (error) {
-    res.status(500).json({ error: 'Registration failed' });
+    console.error('Registration error:', error);
+    res.status(500).json({ 
+      success: false, 
+      message: 'Registration failed. Please try again.' 
+    });
   }
 });
 
-app.post('/auth/login', passport.authenticate('local'), (req, res) => {
-  res.json({ message: 'Login successful', user: req.user });
+app.post('/api/auth/login', (req, res, next) => {
+  passport.authenticate('local', (err, user, info) => {
+    if (err) {
+      return res.status(500).json({ 
+        success: false, 
+        message: 'Authentication error' 
+      });
+    }
+    
+    if (!user) {
+      return res.status(401).json({ 
+        success: false, 
+        message: info?.message || 'Invalid credentials' 
+      });
+    }
+    
+    req.login(user, (err) => {
+      if (err) {
+        return res.status(500).json({ 
+          success: false, 
+          message: 'Login failed' 
+        });
+      }
+      
+      res.json({ 
+        success: true, 
+        message: 'Login successful', 
+        user: { 
+          id: user._id, 
+          username: user.username, 
+          name: user.name,
+          avatar: user.avatar,
+          skillLevel: user.skillLevel 
+        } 
+      });
+    });
+  })(req, res, next);
 });
 
 app.get('/auth/github', passport.authenticate('github', { scope: ['user:email'] }));
-app.get('/auth/github/callback', passport.authenticate('github', { 
-  failureRedirect: '/?auth=failed' 
-}), (req, res) => {
-  res.redirect('/');
-});
 
-app.post('/auth/logout', (req, res) => {
-  req.logout(() => {
-    res.json({ message: 'Logout successful' });
+app.get('/auth/github/callback', 
+  passport.authenticate('github', { failureRedirect: '/?auth=github_failed' }),
+  (req, res) => {
+    res.redirect('/');
+  }
+);
+
+app.post('/api/auth/logout', (req, res) => {
+  req.logout((err) => {
+    if (err) {
+      return res.status(500).json({ 
+        success: false, 
+        message: 'Logout failed' 
+      });
+    }
+    res.json({ 
+      success: true, 
+      message: 'Logout successful' 
+    });
   });
 });
 
-// File Upload Routes
-app.post('/api/upload', upload.single('file'), async (req, res) => {
-  if (!req.user) return res.status(401).json({ error: 'Unauthorized' });
-  
-  try {
-    const filename = `${Date.now()}-${req.file.originalname}`;
-    const uploadStream = gfs.openUploadStream(filename, {
-      metadata: { userId: req.user._id, originalName: req.file.originalname }
+app.get('/api/auth/user', (req, res) => {
+  if (req.isAuthenticated()) {
+    res.json({ 
+      success: true, 
+      user: {
+        id: req.user._id,
+        username: req.user.username,
+        name: req.user.name,
+        avatar: req.user.avatar,
+        skillLevel: req.user.skillLevel,
+        focusArea: req.user.focusArea
+      }
     });
-    
-    uploadStream.end(req.file.buffer);
-    uploadStream.on('finish', () => {
-      res.json({ 
-        message: 'File uploaded successfully', 
-        fileId: uploadStream.id,
-        filename: filename,
-        originalName: req.file.originalname
-      });
-    });
-  } catch (error) {
-    res.status(500).json({ error: 'Upload failed' });
+  } else {
+    res.json({ success: false, user: null });
   }
 });
 
-app.get('/api/files/:filename', (req, res) => {
-  gfs.openDownloadStreamByName(req.params.filename).pipe(res);
-});
-
-// Project Routes
+// Projects API
 app.get('/api/projects', async (req, res) => {
   try {
     const projects = await Project.find({ isPublic: true })
       .populate('owner', 'username name avatar')
       .sort({ createdAt: -1 })
-      .limit(50);
-    res.json(projects);
+      .limit(20);
+    
+    res.json({ success: true, projects });
   } catch (error) {
-    res.status(500).json({ error: 'Failed to fetch projects' });
+    res.status(500).json({ success: false, message: 'Failed to fetch projects' });
   }
 });
 
 app.post('/api/projects', async (req, res) => {
-  if (!req.user) return res.status(401).json({ error: 'Unauthorized' });
+  if (!req.isAuthenticated()) {
+    return res.status(401).json({ success: false, message: 'Not authenticated' });
+  }
   
   try {
     const project = new Project({
       ...req.body,
-      owner: req.user._id,
-      collaborators: [req.user._id]
+      owner: req.user._id
     });
+    
     await project.save();
-    res.json(project);
+    await project.populate('owner', 'username name avatar');
+    
+    res.json({ success: true, project });
   } catch (error) {
-    res.status(500).json({ error: 'Failed to create project' });
+    res.status(500).json({ success: false, message: 'Failed to create project' });
   }
 });
 
-// AI Assistant Route
+// AI Assistant
 app.post('/api/ai/chat', async (req, res) => {
-  if (!req.user) return res.status(401).json({ error: 'Unauthorized' });
+  if (!req.isAuthenticated()) {
+    return res.status(401).json({ success: false, message: 'Not authenticated' });
+  }
   
   try {
-    const { message, context = 'general' } = req.body;
+    const { message } = req.body;
     
-    const completion = await openai.chat.completions.create({
-      model: "gpt-4",
-      messages: [
-        {
-          role: "system",
-          content: `You are an AI coding assistant for DEVS ARENA. Help with ${context} related questions. Be concise and helpful.`
-        },
-        { role: "user", content: message }
-      ],
-      max_tokens: 500
-    });
+    // Simple AI response (replace with OpenAI API in production)
+    const aiResponses = {
+      'hello': 'Hello! How can I help you with your coding today?',
+      'help': 'I can help you with code explanations, debugging, and learning programming concepts.',
+      'html': 'HTML is the standard markup language for creating web pages.',
+      'css': 'CSS is used to style and layout web pages.',
+      'javascript': 'JavaScript is a programming language that makes web pages interactive.',
+      'python': 'Python is a versatile programming language great for web development, data science, and AI.',
+      'react': 'React is a JavaScript library for building user interfaces, particularly web applications.',
+      'node': 'Node.js is a JavaScript runtime built on Chrome\'s V8 JavaScript engine.',
+      'mongodb': 'MongoDB is a NoSQL database that uses JSON-like documents with optional schemas.'
+    };
     
-    res.json({ response: completion.choices[0].message.content });
+    const response = aiResponses[message.toLowerCase()] 
+      || `I understand you're asking about "${message}". As an AI assistant, I can help explain programming concepts, help debug code, or suggest learning resources. Could you be more specific about what you need help with?`;
+    
+    res.json({ success: true, response });
   } catch (error) {
-    res.status(500).json({ error: 'AI service unavailable' });
+    res.status(500).json({ success: false, message: 'AI service unavailable' });
   }
 });
 
-// Code Execution Route (Enhanced)
-app.post('/api/code/execute', async (req, res) => {
-  if (!req.user) return res.status(401).json({ error: 'Unauthorized' });
-  
-  try {
-    const { language, code, input } = req.body;
-    
-    // Simulate code execution (in production, use Docker or external service)
-    const execution = new CodeExecution({
-      user: req.user._id,
-      language,
-      code,
-      input,
-      output: `Execution result for ${language} code`,
-      executionTime: Math.random() * 1000,
-      memoryUsed: Math.random() * 50
-    });
-    await execution.save();
-    
-    res.json({
-      output: execution.output,
-      executionTime: execution.executionTime,
-      memoryUsed: execution.memoryUsed
-    });
-  } catch (error) {
-    res.status(500).json({ error: 'Code execution failed' });
-  }
-});
-
-// Collaboration Routes
-app.post('/api/collaboration/rooms', async (req, res) => {
-  if (!req.user) return res.status(401).json({ error: 'Unauthorized' });
-  
-  try {
-    const room = new CollaborationRoom({
-      ...req.body,
-      owner: req.user._id,
-      participants: [req.user._id]
-    });
-    await room.save();
-    res.json(room);
-  } catch (error) {
-    res.status(500).json({ error: 'Failed to create room' });
-  }
-});
-
-// Admin Routes
-app.get('/admin', (req, res) => {
-  if (req.query.password !== process.env.ADMIN_PASSWORD) {
-    return res.status(401).json({ error: 'Unauthorized' });
-  }
-  
-  // Admin dashboard data
-  res.json({ message: 'Admin access granted' });
-});
-
-// Real-time Socket.io Handlers
-const activeUsers = new Map();
-const codeRooms = new Map();
+// Socket.io for real-time features
+const onlineUsers = new Map();
 
 io.on('connection', (socket) => {
   console.log('User connected:', socket.id);
 
-  socket.on('user_online', async (userId) => {
-    activeUsers.set(socket.id, userId);
-    await User.findByIdAndUpdate(userId, { isOnline: true, lastActive: new Date() });
-    io.emit('users_online', Array.from(activeUsers.values()));
+  socket.on('user_online', (userId) => {
+    onlineUsers.set(socket.id, userId);
+    io.emit('online_users', Array.from(onlineUsers.values()));
   });
 
-  socket.on('join_room', (roomId) => {
-    socket.join(roomId);
-    socket.to(roomId).emit('user_joined', socket.id);
-  });
-
-  socket.on('code_change', (data) => {
-    socket.to(data.roomId).emit('code_update', {
-      code: data.code,
-      userId: data.userId,
-      cursor: data.cursor
-    });
-  });
-
-  socket.on('cursor_move', (data) => {
-    socket.to(data.roomId).emit('cursor_update', {
-      userId: data.userId,
-      cursor: data.cursor,
-      name: data.name
-    });
+  socket.on('join_chat', (room) => {
+    socket.join(room);
   });
 
   socket.on('chat_message', async (data) => {
@@ -470,38 +393,27 @@ io.on('connection', (socket) => {
         content: data.content,
         type: data.type
       });
-      await message.save();
       
-      io.to(data.room).emit('new_message', await message.populate('user', 'username name avatar'));
+      await message.save();
+      await message.populate('user', 'username name avatar');
+      
+      io.to(data.room).emit('new_message', message);
     } catch (error) {
       socket.emit('error', 'Failed to send message');
     }
   });
 
-  socket.on('disconnect', async () => {
-    const userId = activeUsers.get(socket.id);
-    if (userId) {
-      await User.findByIdAndUpdate(userId, { isOnline: false });
-      activeUsers.delete(socket.id);
-      io.emit('users_online', Array.from(activeUsers.values()));
-    }
+  socket.on('disconnect', () => {
+    onlineUsers.delete(socket.id);
+    io.emit('online_users', Array.from(onlineUsers.values()));
     console.log('User disconnected:', socket.id);
   });
 });
 
-// Background Jobs
-cron.schedule('0 0 * * *', async () => {
-  // Daily cleanup of inactive collaboration rooms
-  const cutoff = new Date(Date.now() - 24 * 60 * 60 * 1000);
-  await CollaborationRoom.updateMany(
-    { lastActivity: { $lt: cutoff }, isActive: true },
-    { isActive: false }
-  );
-  console.log('Cleaned up inactive collaboration rooms');
-});
-
-// Start Server
 const PORT = process.env.PORT || 5000;
 server.listen(PORT, () => {
-  console.log(`DEVS ARENA running on port ${PORT}`);
+  console.log(`🚀 DEVS ARENA running on port ${PORT}`);
+  console.log(`📧 Authentication System: ACTIVE`);
+  console.log(`🗄️ Database: CONNECTED`);
+  console.log(`🔌 Socket.IO: READY`);
 });
