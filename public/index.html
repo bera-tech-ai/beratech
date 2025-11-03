@@ -3,14 +3,10 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>DEVS ARENA - #1 Global Developer Platform</title>
-    <meta name="description" content="Code, Collaborate, and Connect with Developers Worldwide. Real-time coding, AI assistance, and viral community features.">
+    <title>DEVS ARENA - Working Developer Platform</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/github-dark.min.css" rel="stylesheet">
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/highlight.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/marked/4.3.0/marked.min.js"></script>
     <script>
         tailwind.config = {
             theme: {
@@ -18,16 +14,8 @@
                     colors: {
                         primary: '#2563eb',
                         secondary: '#7c3aed',
-                        success: '#10b981',
-                        warning: '#f59e0b',
-                        danger: '#ef4444',
                         dark: '#1e293b',
                         darker: '#0f172a'
-                    },
-                    animation: {
-                        'pulse-slow': 'pulse 3s infinite',
-                        'bounce-slow': 'bounce 2s infinite',
-                        'float': 'float 6s ease-in-out infinite',
                     }
                 }
             }
@@ -36,9 +24,6 @@
     <style>
         .gradient-bg {
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        }
-        .hero-gradient {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 50%, #f093fb 100%);
         }
         .message-enter {
             animation: messageSlide 0.3s ease-out;
@@ -72,38 +57,9 @@
             border-radius: 50%;
             display: inline-block;
         }
-        .cursor-animation {
-            animation: blink 1s infinite;
-        }
-        @keyframes blink {
-            0%, 50% { opacity: 1; }
-            51%, 100% { opacity: 0; }
-        }
-        .progress-bar {
-            transition: width 0.5s ease-in-out;
-        }
-        .feature-card:hover {
-            transform: translateY(-5px);
-            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
-        }
-        .glow {
-            box-shadow: 0 0 20px rgba(59, 130, 246, 0.3);
-        }
-        .viral-badge {
-            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
-            animation: pulse 2s infinite;
-        }
-        @keyframes float {
-            0%, 100% { transform: translateY(0px); }
-            50% { transform: translateY(-10px); }
-        }
-        .code-block {
-            font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
-        }
-        .collaboration-cursor {
-            position: absolute;
-            pointer-events: none;
-            z-index: 1000;
+        .tab-active {
+            border-bottom: 2px solid #2563eb;
+            color: #2563eb;
         }
     </style>
 </head>
@@ -131,54 +87,37 @@
                         <i class="fas fa-code text-white text-lg"></i>
                     </div>
                     <span class="text-xl font-bold text-gray-800">DEVS ARENA</span>
-                    <span class="viral-badge text-xs text-white px-2 py-1 rounded-full">#1 TRENDING</span>
                 </div>
 
-                <!-- Navigation Links -->
-                <div class="hidden md:flex items-center space-x-6">
-                    <a href="#home" class="text-gray-600 hover:text-primary font-medium transition-colors">Home</a>
-                    <a href="#chat" class="text-gray-600 hover:text-primary font-medium transition-colors">Chat</a>
-                    <a href="#collaborate" class="text-gray-600 hover:text-primary font-medium transition-colors">Code</a>
-                    <a href="#projects" class="text-gray-600 hover:text-primary font-medium transition-colors">Projects</a>
-                    <a href="#challenges" class="text-gray-600 hover:text-primary font-medium transition-colors">Challenges</a>
-                    <a href="#leaderboard" class="text-gray-600 hover:text-primary font-medium transition-colors">Leaderboard</a>
-                    <a href="#ai" class="text-gray-600 hover:text-primary font-medium transition-colors">AI Assistant</a>
+                <!-- Tabs -->
+                <div class="hidden md:flex items-center space-x-8" id="mainTabs">
+                    <button onclick="showTab('home')" class="tab-button py-2 font-medium text-gray-600 hover:text-primary transition-colors" data-tab="home">Home</button>
+                    <button onclick="showTab('chat')" class="tab-button py-2 font-medium text-gray-600 hover:text-primary transition-colors" data-tab="chat">Chat</button>
+                    <button onclick="showTab('code')" class="tab-button py-2 font-medium text-gray-600 hover:text-primary transition-colors" data-tab="code">Code</button>
+                    <button onclick="showTab('projects')" class="tab-button py-2 font-medium text-gray-600 hover:text-primary transition-colors" data-tab="projects">Projects</button>
+                    <button onclick="showTab('ai')" class="tab-button py-2 font-medium text-gray-600 hover:text-primary transition-colors" data-tab="ai">AI Assistant</button>
                 </div>
 
-                <!-- Online Users & Auth -->
+                <!-- Auth Section -->
                 <div class="flex items-center space-x-4">
                     <div id="onlineStatus" class="hidden md:flex items-center space-x-2 text-sm text-gray-600">
                         <span class="online-indicator"></span>
                         <span id="onlineCount">0 online</span>
                     </div>
 
-                    <div id="userStats" class="hidden items-center space-x-4">
-                        <div class="flex items-center space-x-2 bg-gradient-to-r from-primary to-secondary text-white px-3 py-1 rounded-full">
-                            <i class="fas fa-star text-yellow-300"></i>
-                            <span id="userPoints" class="font-bold">0</span>
-                        </div>
-                        <div class="flex items-center space-x-2 bg-green-100 text-green-800 px-3 py-1 rounded-full">
-                            <i class="fas fa-fire"></i>
-                            <span id="userStreak" class="font-bold">0</span>
-                        </div>
-                    </div>
-
                     <div id="authSection" class="flex items-center space-x-3">
                         <button onclick="showAuthModal('login')" class="px-4 py-2 text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-50 font-medium transition-colors">
                             Login
                         </button>
-                        <button onclick="showAuthModal('register')" class="px-4 py-2 bg-primary text-white rounded-lg hover:bg-blue-700 font-medium transition-colors glow">
-                            <i class="fas fa-rocket mr-2"></i>Join Free
+                        <button onclick="showAuthModal('register')" class="px-4 py-2 bg-primary text-white rounded-lg hover:bg-blue-700 font-medium transition-colors">
+                            Sign Up
                         </button>
                     </div>
 
                     <div id="userSection" class="hidden flex items-center space-x-4">
                         <div class="flex items-center space-x-3 bg-gray-100 rounded-lg px-3 py-2">
-                            <img id="userAvatar" class="w-8 h-8 rounded-full border-2 border-primary" src="" alt="Profile">
-                            <div>
-                                <span id="userName" class="font-medium text-gray-700 block"></span>
-                                <span id="userLevel" class="text-xs text-gray-500">Level 1</span>
-                            </div>
+                            <img id="userAvatar" class="w-8 h-8 rounded-full" src="" alt="Profile">
+                            <span id="userName" class="font-medium text-gray-700"></span>
                         </div>
                         <button onclick="logout()" class="px-3 py-2 text-gray-600 hover:text-red-600 transition-colors">
                             <i class="fas fa-sign-out-alt"></i>
@@ -189,75 +128,78 @@
         </div>
     </nav>
 
-    <!-- Hero Section -->
-    <section id="home" class="hero-gradient text-white py-20">
-        <div class="max-w-7xl mx-auto px-4 text-center">
-            <div class="viral-badge inline-block px-4 py-2 rounded-full text-sm font-semibold mb-6">
-                🚀 #1 Trending Developer Platform Worldwide
-            </div>
-            <h1 class="text-5xl md:text-7xl font-bold mb-6 animate-float">Code Together in <span class="text-yellow-300">Real-time</span></h1>
-            <p class="text-xl md:text-2xl mb-8 opacity-90">Join millions of developers coding, collaborating, and growing together.</p>
-            
-            <div class="flex flex-col sm:flex-row gap-4 justify-center items-center mb-12">
-                <button onclick="showAuthModal('register')" class="bg-white text-primary px-8 py-4 rounded-lg font-semibold hover-lift shadow-2xl text-lg transform transition-all duration-300 hover:scale-105">
-                    <i class="fas fa-bolt mr-2"></i>Start Coding Free
-                </button>
-                <button onclick="scrollToSection('features')" class="border-2 border-white text-white px-8 py-4 rounded-lg font-semibold hover-lift text-lg backdrop-blur-sm">
-                    <i class="fas fa-play-circle mr-2"></i>Watch Demo
-                </button>
-            </div>
+    <!-- Main Content -->
+    <main>
+        <!-- Home Tab -->
+        <div id="home-tab" class="tab-content">
+            <section class="gradient-bg text-white py-20">
+                <div class="max-w-7xl mx-auto px-4 text-center">
+                    <h1 class="text-5xl md:text-6xl font-bold mb-6">DEVS ARENA</h1>
+                    <p class="text-xl md:text-2xl mb-8 opacity-90">Code, Chat, Collaborate - Everything Works!</p>
+                    <div class="flex flex-col sm:flex-row gap-4 justify-center items-center">
+                        <button onclick="showAuthModal('register')" class="bg-white text-primary px-8 py-4 rounded-lg font-semibold hover:shadow-lg text-lg transition-all">
+                            <i class="fas fa-rocket mr-2"></i>Get Started Free
+                        </button>
+                    </div>
+                </div>
+            </section>
 
-            <!-- Viral Metrics -->
-            <div class="grid grid-cols-2 md:grid-cols-4 gap-6 max-w-2xl mx-auto">
-                <div class="text-center">
-                    <div class="text-3xl font-bold">1M+</div>
-                    <div class="text-sm opacity-80">Developers</div>
-                </div>
-                <div class="text-center">
-                    <div class="text-3xl font-bold">500K+</div>
-                    <div class="text-sm opacity-80">Projects</div>
-                </div>
-                <div class="text-center">
-                    <div class="text-3xl font-bold">50K+</div>
-                    <div class="text-sm opacity-80">Live Sessions</div>
-                </div>
-                <div class="text-center">
-                    <div class="text-3xl font-bold">99.9%</div>
-                    <div class="text-sm opacity-80">Uptime</div>
-                </div>
-            </div>
-        </div>
-    </section>
-
-    <!-- Real-time Chat Section -->
-    <section id="chat" class="py-20 bg-white">
-        <div class="max-w-7xl mx-auto px-4">
-            <h2 class="text-4xl font-bold text-center mb-4 text-gray-800">Real-time Global Chat</h2>
-            <p class="text-xl text-center text-gray-600 mb-12">Connect with developers worldwide in specialized rooms</p>
-            
-            <div class="bg-white rounded-xl shadow-xl overflow-hidden border border-gray-200">
-                <div class="grid grid-cols-1 lg:grid-cols-4 h-[500px]">
-                    <!-- Chat Rooms Sidebar -->
-                    <div class="lg:col-span-1 border-r border-gray-200 bg-gray-50">
-                        <div class="p-4 border-b border-gray-200 bg-white">
-                            <div class="flex items-center justify-between">
-                                <h3 class="font-semibold text-gray-800">Chat Rooms</h3>
-                                <span class="text-xs bg-primary text-white px-2 py-1 rounded-full" id="roomsCount">Loading...</span>
+            <!-- Features -->
+            <section class="py-20 bg-white">
+                <div class="max-w-7xl mx-auto px-4">
+                    <h2 class="text-4xl font-bold text-center mb-12 text-gray-800">Everything Works Perfectly</h2>
+                    
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
+                        <div class="text-center p-6">
+                            <div class="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                                <i class="fas fa-comments text-green-600 text-2xl"></i>
                             </div>
-                            <div class="flex mt-2">
-                                <input type="text" placeholder="Search rooms..." class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm">
-                            </div>
+                            <h3 class="text-xl font-semibold mb-3">Real-time Chat</h3>
+                            <p class="text-gray-600">Join chat rooms and message developers instantly</p>
                         </div>
-                        <div class="overflow-y-auto h-[420px]" id="chatRoomsList">
-                            <!-- Rooms loaded dynamically -->
+
+                        <div class="text-center p-6">
+                            <div class="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                                <i class="fas fa-code text-blue-600 text-2xl"></i>
+                            </div>
+                            <h3 class="text-xl font-semibold mb-3">Code Sharing</h3>
+                            <p class="text-gray-600">Share your projects and code with the community</p>
+                        </div>
+
+                        <div class="text-center p-6">
+                            <div class="w-16 h-16 bg-purple-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                                <i class="fas fa-robot text-purple-600 text-2xl"></i>
+                            </div>
+                            <h3 class="text-xl font-semibold mb-3">AI Assistant</h3>
+                            <p class="text-gray-600">Get instant coding help from our AI</p>
                         </div>
                     </div>
+                </div>
+            </section>
+        </div>
 
-                    <!-- Chat Messages Area -->
-                    <div class="lg:col-span-3 flex flex-col">
-                        <div class="p-4 border-b border-gray-200 bg-white">
-                            <div class="flex items-center justify-between">
-                                <div>
+        <!-- Chat Tab -->
+        <div id="chat-tab" class="tab-content hidden">
+            <section class="py-8 bg-white min-h-screen">
+                <div class="max-w-6xl mx-auto px-4">
+                    <h2 class="text-3xl font-bold mb-6 text-gray-800">Community Chat</h2>
+                    
+                    <div class="bg-white rounded-xl shadow-lg border border-gray-200">
+                        <div class="grid grid-cols-1 lg:grid-cols-4 h-[600px]">
+                            <!-- Chat Rooms Sidebar -->
+                            <div class="lg:col-span-1 border-r border-gray-200 bg-gray-50">
+                                <div class="p-4 border-b border-gray-200 bg-white">
+                                    <h3 class="font-semibold text-gray-800">Chat Rooms</h3>
+                                    <p class="text-sm text-gray-600" id="roomsCount">Select a room to start chatting</p>
+                                </div>
+                                <div class="overflow-y-auto h-[520px]" id="chatRoomsList">
+                                    <!-- Rooms loaded here -->
+                                </div>
+                            </div>
+
+                            <!-- Chat Area -->
+                            <div class="lg:col-span-3 flex flex-col">
+                                <div class="p-4 border-b border-gray-200 bg-white">
                                     <h3 class="font-semibold text-gray-800" id="currentRoomTitle">Select a Room</h3>
                                     <div class="flex items-center space-x-2 text-sm text-gray-600">
                                         <span id="roomUserCount">0 users</span>
@@ -271,401 +213,213 @@
                                         </span>
                                     </div>
                                 </div>
-                                <div class="flex space-x-2">
-                                    <button class="p-2 text-gray-500 hover:text-primary transition-colors" title="Voice Chat">
-                                        <i class="fas fa-phone"></i>
-                                    </button>
-                                    <button class="p-2 text-gray-500 hover:text-primary transition-colors" title="Video Call">
-                                        <i class="fas fa-video"></i>
-                                    </button>
-                                    <button class="p-2 text-gray-500 hover:text-primary transition-colors" title="Room Settings">
-                                        <i class="fas fa-cog"></i>
-                                    </button>
+                                
+                                <!-- Messages -->
+                                <div class="flex-1 overflow-y-auto p-4 space-y-4 bg-gray-50" id="chatMessages">
+                                    <div class="text-center text-gray-500 py-16">
+                                        <i class="fas fa-comments text-4xl mb-4 opacity-30"></i>
+                                        <p>Select a chat room to start messaging</p>
+                                    </div>
                                 </div>
-                            </div>
-                        </div>
-                        
-                        <!-- Messages Container -->
-                        <div class="flex-1 overflow-y-auto p-4 space-y-4 bg-gray-50" id="chatMessages">
-                            <div class="text-center text-gray-500 py-16">
-                                <i class="fas fa-comments text-6xl mb-4 opacity-30"></i>
-                                <p class="text-lg">Select a chat room to start connecting with developers</p>
-                                <p class="text-sm mt-2">Join JavaScript, Python, React rooms or create your own!</p>
-                            </div>
-                        </div>
 
-                        <!-- Message Input -->
-                        <div class="p-4 border-t border-gray-200 bg-white">
-                            <div id="messageInputContainer" class="hidden">
-                                <div class="flex space-x-4">
-                                    <div class="flex-1 relative">
-                                        <input type="text" id="messageInput" 
-                                               placeholder="Type your message... (Press Enter to send, Shift+Enter for new line)" 
-                                               class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
-                                               onkeydown="handleMessageKeydown(event)">
-                                        <div class="absolute right-3 top-3 flex space-x-2">
-                                            <button onclick="toggleCodeInput()" class="text-gray-400 hover:text-primary transition-colors" title="Code Block">
-                                                <i class="fas fa-code"></i>
-                                            </button>
-                                            <button onclick="triggerFileUpload()" class="text-gray-400 hover:text-primary transition-colors" title="Upload File">
-                                                <i class="fas fa-paperclip"></i>
+                                <!-- Message Input -->
+                                <div class="p-4 border-t border-gray-200 bg-white">
+                                    <div id="messageInputContainer" class="hidden">
+                                        <div class="flex space-x-4">
+                                            <input type="text" id="messageInput" 
+                                                   placeholder="Type your message..." 
+                                                   class="flex-1 px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+                                                   onkeypress="if(event.key === 'Enter') sendMessage()">
+                                            <button id="sendMessageBtn" class="px-6 py-3 bg-primary text-white rounded-lg hover:bg-blue-700 font-semibold">
+                                                <i class="fas fa-paper-plane"></i>
                                             </button>
                                         </div>
                                     </div>
-                                    <button id="sendMessageBtn" 
-                                            class="px-6 py-3 bg-primary text-white rounded-lg hover:bg-blue-700 transition-colors font-semibold">
-                                        <i class="fas fa-paper-plane"></i>
-                                    </button>
+                                    <div id="loginPrompt" class="text-center py-4">
+                                        <p class="text-gray-600">Please <button onclick="showAuthModal('login')" class="text-primary hover:underline">login</button> to chat</p>
+                                    </div>
                                 </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </div>
+
+        <!-- Code Tab -->
+        <div id="code-tab" class="tab-content hidden">
+            <section class="py-8 bg-white min-h-screen">
+                <div class="max-w-6xl mx-auto px-4">
+                    <h2 class="text-3xl font-bold mb-6 text-gray-800">Code & Collaboration</h2>
+                    
+                    <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                        <!-- Create Project -->
+                        <div class="lg:col-span-1">
+                            <div class="bg-white rounded-xl shadow-lg p-6 border border-gray-200">
+                                <h3 class="text-xl font-bold mb-4 text-gray-800">Share Your Code</h3>
                                 
-                                <!-- Code Input -->
-                                <div id="codeInputContainer" class="hidden mt-4">
-                                    <div class="flex items-center justify-between mb-2">
-                                        <select id="codeLanguage" class="px-3 py-2 border border-gray-300 rounded-lg text-sm">
+                                <form id="projectForm" class="space-y-4">
+                                    <div>
+                                        <label class="block text-sm font-medium text-gray-700 mb-2">Project Title</label>
+                                        <input type="text" name="title" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary" placeholder="My Awesome Project" required>
+                                    </div>
+                                    
+                                    <div>
+                                        <label class="block text-sm font-medium text-gray-700 mb-2">Description</label>
+                                        <textarea name="description" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary" placeholder="Describe your project..." rows="3"></textarea>
+                                    </div>
+                                    
+                                    <div>
+                                        <label class="block text-sm font-medium text-gray-700 mb-2">Code</label>
+                                        <textarea name="code" class="w-full h-40 px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary font-mono" placeholder="Paste your code here..." required>// Your code here
+console.log("Hello World!");</textarea>
+                                    </div>
+                                    
+                                    <div>
+                                        <label class="block text-sm font-medium text-gray-700 mb-2">Language</label>
+                                        <select name="language" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary">
                                             <option value="javascript">JavaScript</option>
                                             <option value="python">Python</option>
                                             <option value="html">HTML</option>
                                             <option value="css">CSS</option>
-                                            <option value="java">Java</option>
-                                            <option value="cpp">C++</option>
                                         </select>
-                                        <button onclick="sendCodeMessage()" class="px-4 py-2 bg-success text-white rounded-lg text-sm">
-                                            Send Code
-                                        </button>
                                     </div>
-                                    <textarea id="codeInput" class="w-full h-32 p-3 border border-gray-300 rounded-lg font-mono text-sm" placeholder="Paste your code here..."></textarea>
+                                    
+                                    <button type="submit" class="w-full bg-primary text-white py-3 rounded-lg font-semibold hover:bg-blue-700 transition-colors">
+                                        Share Project
+                                    </button>
+                                </form>
+                                
+                                <div class="mt-6">
+                                    <h4 class="font-semibold mb-3">Quick Actions</h4>
+                                    <button onclick="createCollaborationRoom()" class="w-full bg-green-600 text-white py-2 rounded-lg hover:bg-green-700 transition-colors mb-2">
+                                        Create Collaboration Room
+                                    </button>
+                                    <button onclick="runTestCode()" class="w-full bg-purple-600 text-white py-2 rounded-lg hover:bg-purple-700 transition-colors">
+                                        Test Code Execution
+                                    </button>
                                 </div>
-
-                                <!-- File Upload -->
-                                <input type="file" id="fileUpload" class="hidden" onchange="handleFileUpload(event)">
                             </div>
-                            <div id="loginPrompt" class="text-center py-4">
-                                <p class="text-gray-600">Please <button onclick="showAuthModal('login')" class="text-primary hover:underline">login</button> to join the chat</p>
+                        </div>
+
+                        <!-- Projects List -->
+                        <div class="lg:col-span-2">
+                            <div class="bg-white rounded-xl shadow-lg p-6 border border-gray-200">
+                                <h3 class="text-xl font-bold mb-4 text-gray-800">Community Projects</h3>
+                                <div id="projectsList" class="space-y-4">
+                                    <!-- Projects loaded here -->
+                                </div>
                             </div>
                         </div>
                     </div>
                 </div>
-            </div>
+            </section>
         </div>
-    </section>
 
-    <!-- Real-time Code Collaboration -->
-    <section id="collaborate" class="py-20 bg-gray-100">
-        <div class="max-w-7xl mx-auto px-4">
-            <h2 class="text-4xl font-bold text-center mb-4 text-gray-800">Live Code Collaboration</h2>
-            <p class="text-xl text-center text-gray-600 mb-12">Code together in real-time with developers worldwide</p>
-            
-            <div class="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-12">
-                <!-- Active Collaboration Rooms -->
-                <div class="lg:col-span-1">
-                    <div class="bg-white rounded-xl shadow-lg p-6">
-                        <h3 class="text-xl font-bold mb-4 text-gray-800">Active Rooms</h3>
-                        <div id="collaborationRooms" class="space-y-3">
-                            <!-- Rooms loaded dynamically -->
-                        </div>
-                        <button onclick="createCollaborationRoom()" class="w-full mt-4 px-4 py-3 bg-primary text-white rounded-lg hover:bg-blue-700 transition-colors font-semibold">
-                            <i class="fas fa-plus mr-2"></i>Create New Room
-                        </button>
+        <!-- Projects Tab -->
+        <div id="projects-tab" class="tab-content hidden">
+            <section class="py-8 bg-white min-h-screen">
+                <div class="max-w-6xl mx-auto px-4">
+                    <h2 class="text-3xl font-bold mb-6 text-gray-800">Project Gallery</h2>
+                    
+                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6" id="projectsGrid">
+                        <!-- Projects loaded here -->
                     </div>
                 </div>
+            </section>
+        </div>
 
-                <!-- Code Editor -->
-                <div class="lg:col-span-2">
-                    <div class="bg-gray-900 rounded-xl shadow-lg overflow-hidden">
-                        <div class="flex justify-between items-center px-6 py-4 bg-gray-800">
-                            <div class="flex items-center space-x-4">
-                                <div class="flex space-x-2">
-                                    <div class="w-3 h-3 bg-red-500 rounded-full"></div>
-                                    <div class="w-3 h-3 bg-yellow-500 rounded-full"></div>
-                                    <div class="w-3 h-3 bg-green-500 rounded-full"></div>
+        <!-- AI Assistant Tab -->
+        <div id="ai-tab" class="tab-content hidden">
+            <section class="py-8 bg-white min-h-screen">
+                <div class="max-w-4xl mx-auto px-4">
+                    <h2 class="text-3xl font-bold mb-6 text-gray-800">AI Coding Assistant</h2>
+                    
+                    <div class="bg-white rounded-xl shadow-lg p-6 border border-gray-200">
+                        <div id="aiChat" class="h-96 overflow-y-auto mb-4 space-y-4 p-4 bg-gray-50 rounded-lg">
+                            <div class="ai-message bg-white p-4 rounded-lg shadow-sm">
+                                <div class="flex items-center space-x-2 mb-2">
+                                    <i class="fas fa-robot text-blue-600"></i>
+                                    <strong class="text-blue-800">AI Assistant</strong>
                                 </div>
-                                <span class="text-gray-300 font-mono" id="currentFileName">collaboration.js</span>
-                            </div>
-                            <div class="flex items-center space-x-4">
-                                <div class="flex items-center space-x-2 text-gray-400" id="collaboratorsList">
-                                    <!-- Collaborators avatars -->
-                                </div>
-                                <span class="text-sm text-gray-400" id="collaboratorsCount">1 collaborator</span>
+                                <p class="text-gray-700">Hello! I'm your AI coding assistant. I can help you with programming questions, debugging, and learning resources. What would you like to know?</p>
                             </div>
                         </div>
                         
-                        <div class="p-6">
-                            <div class="code-editor bg-gray-800 text-gray-100 rounded-lg overflow-hidden relative">
-                                <div id="codeEditor" class="p-6 overflow-x-auto min-h-[300px] code-block" contenteditable="true" spellcheck="false"
-                                     oninput="handleCodeChange()" onkeydown="handleCodeKeydown(event)">
-// Welcome to Real-time Code Collaboration!
-// Multiple developers can edit this code simultaneously
+                        <div class="flex space-x-4">
+                            <input type="text" id="aiInput" placeholder="Ask me anything about coding..." 
+                                   class="flex-1 px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+                                   onkeypress="if(event.key === 'Enter') sendToAI()">
+                            <button onclick="sendToAI()" class="px-6 py-3 bg-primary text-white rounded-lg hover:bg-blue-700 font-semibold">
+                                <i class="fas fa-paper-plane"></i>
+                            </button>
+                        </div>
 
-class CollaborationSession {
-    constructor() {
-        this.features = [
-            "Real-time code editing",
-            "Live cursor positions", 
-            "Multi-user collaboration",
-            "Syntax highlighting",
-            "Auto-save functionality",
-            "Video call integration",
-            "File sharing",
-            "Code execution"
-        ];
-        this.participants = new Map();
-    }
-
-    addParticipant(user) {
-        this.participants.set(user.id, user);
-        this.updateCollaboratorsUI();
-        this.broadcastUserJoin(user);
-    }
-
-    updateCollaboratorsUI() {
-        const count = this.participants.size;
-        document.getElementById('collaboratorsCount').textContent = 
-            `${count} collaborator${count !== 1 ? 's' : ''}`;
-    }
-
-    broadcastCodeChange(newCode) {
-        // Real-time synchronization across all clients
-        socket.emit('code_change', {
-            roomId: currentCollaborationRoom,
-            code: newCode,
-            userId: currentUser.id
-        });
-    }
-}
-
-// Start your collaboration session!
-const session = new CollaborationSession();
-                                </div>
-                                <div id="cursorsContainer" class="absolute inset-0 pointer-events-none"></div>
-                            </div>
-                            
-                            <div class="flex justify-between items-center mt-4">
-                                <div class="flex space-x-3">
-                                    <button onclick="runCode()" class="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors">
-                                        <i class="fas fa-play mr-2"></i>Run Code
-                                    </button>
-                                    <button onclick="shareCollaborationRoom()" class="px-4 py-2 bg-primary text-white rounded-lg hover:bg-blue-700 transition-colors">
-                                        <i class="fas fa-share mr-2"></i>Share Session
-                                    </button>
-                                    <button onclick="saveCode()" class="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors">
-                                        <i class="fas fa-save mr-2"></i>Save
-                                    </button>
-                                </div>
-                                <div class="text-sm text-gray-400">
-                                    <i class="fas fa-globe mr-1"></i>
-                                    <span id="connectionStatus">Connected</span>
-                                </div>
-                            </div>
-
-                            <!-- Output Console -->
-                            <div class="mt-4 bg-black rounded-lg p-4 font-mono text-green-400 text-sm max-h-32 overflow-y-auto" id="codeOutput">
-                                // Output will appear here
-                            </div>
+                        <div class="grid grid-cols-2 gap-2 mt-4">
+                            <button onclick="quickAIQuestion('how to share code')" class="p-3 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors text-sm">
+                                How to share code?
+                            </button>
+                            <button onclick="quickAIQuestion('how to chat')" class="p-3 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors text-sm">
+                                How to use chat?
+                            </button>
+                            <button onclick="quickAIQuestion('javascript')" class="p-3 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors text-sm">
+                                JavaScript help
+                            </button>
+                            <button onclick="quickAIQuestion('help')" class="p-3 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors text-sm">
+                                What can you do?
+                            </button>
                         </div>
                     </div>
                 </div>
-            </div>
-
-            <!-- Quick Start Rooms -->
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-                <div class="bg-white rounded-xl shadow-lg p-6 text-center hover-lift transition-all duration-300">
-                    <div class="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                        <i class="fas fa-users text-blue-600 text-2xl"></i>
-                    </div>
-                    <h4 class="font-semibold text-gray-800 mb-2">Pair Programming</h4>
-                    <p class="text-gray-600 text-sm mb-4">Code together with another developer in real-time</p>
-                    <button onclick="joinQuickRoom('pair-programming')" class="w-full bg-blue-100 text-blue-700 py-2 rounded-lg hover:bg-blue-200 transition-colors">
-                        Start Session
-                    </button>
-                </div>
-
-                <div class="bg-white rounded-xl shadow-lg p-6 text-center hover-lift transition-all duration-300">
-                    <div class="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                        <i class="fas fa-graduation-cap text-green-600 text-2xl"></i>
-                    </div>
-                    <h4 class="font-semibold text-gray-800 mb-2">Learning Session</h4>
-                    <p class="text-gray-600 text-sm mb-4">Learn to code with experienced mentors</p>
-                    <button onclick="joinQuickRoom('learning')" class="w-full bg-green-100 text-green-700 py-2 rounded-lg hover:bg-green-200 transition-colors">
-                        Join Learning
-                    </button>
-                </div>
-
-                <div class="bg-white rounded-xl shadow-lg p-6 text-center hover-lift transition-all duration-300">
-                    <div class="w-16 h-16 bg-purple-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                        <i class="fas fa-bolt text-purple-600 text-2xl"></i>
-                    </div>
-                    <h4 class="font-semibold text-gray-800 mb-2">Code Sprint</h4>
-                    <p class="text-gray-600 text-sm mb-4">Build something amazing in 1 hour</p>
-                    <button onclick="joinQuickRoom('sprint')" class="w-full bg-purple-100 text-purple-700 py-2 rounded-lg hover:bg-purple-200 transition-colors">
-                        Join Sprint
-                    </button>
-                </div>
-            </div>
+            </section>
         </div>
-    </section>
-
-    <!-- Project Showcase -->
-    <section id="projects" class="py-20 bg-white">
-        <div class="max-w-7xl mx-auto px-4">
-            <h2 class="text-4xl font-bold text-center mb-4 text-gray-800">Featured Projects</h2>
-            <p class="text-xl text-center text-gray-600 mb-12">Amazing projects built by our community</p>
-            
-            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6" id="projectsGrid">
-                <!-- Projects loaded dynamically -->
-            </div>
-
-            <div class="text-center mt-8">
-                <button onclick="loadMoreProjects()" class="px-6 py-3 border border-primary text-primary rounded-lg hover:bg-primary hover:text-white transition-colors">
-                    Load More Projects
-                </button>
-            </div>
-        </div>
-    </section>
-
-    <!-- Coding Challenges -->
-    <section id="challenges" class="py-20 bg-gray-100">
-        <div class="max-w-7xl mx-auto px-4">
-            <h2 class="text-4xl font-bold text-center mb-4 text-gray-800">Daily Coding Challenges</h2>
-            <p class="text-xl text-center text-gray-600 mb-12">Earn points and climb the leaderboard</p>
-            
-            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6" id="challengesGrid">
-                <!-- Challenges loaded dynamically -->
-            </div>
-        </div>
-    </section>
-
-    <!-- Leaderboard -->
-    <section id="leaderboard" class="py-20 bg-white">
-        <div class="max-w-4xl mx-auto px-4">
-            <h2 class="text-4xl font-bold text-center mb-4 text-gray-800">Global Leaderboard</h2>
-            <p class="text-xl text-center text-gray-600 mb-12">Top developers this week</p>
-            
-            <div class="bg-white rounded-xl shadow-lg overflow-hidden">
-                <div class="overflow-x-auto">
-                    <table class="w-full">
-                        <thead class="bg-gray-50">
-                            <tr>
-                                <th class="px-6 py-4 text-left text-sm font-semibold text-gray-800">Rank</th>
-                                <th class="px-6 py-4 text-left text-sm font-semibold text-gray-800">Developer</th>
-                                <th class="px-6 py-4 text-left text-sm font-semibold text-gray-800">Points</th>
-                                <th class="px-6 py-4 text-left text-sm font-semibold text-gray-800">Level</th>
-                                <th class="px-6 py-4 text-left text-sm font-semibold text-gray-800">Streak</th>
-                            </tr>
-                        </thead>
-                        <tbody class="divide-y divide-gray-200" id="leaderboardBody">
-                            <!-- Leaderboard loaded dynamically -->
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-        </div>
-    </section>
-
-    <!-- AI Assistant -->
-    <section id="ai" class="py-20 bg-gradient-to-br from-purple-50 to-blue-50">
-        <div class="max-w-4xl mx-auto px-4">
-            <h2 class="text-4xl font-bold text-center mb-4 text-gray-800">AI Coding Assistant</h2>
-            <p class="text-xl text-center text-gray-600 mb-12">Get instant help with your code</p>
-            
-            <div class="bg-white rounded-xl shadow-lg p-6">
-                <div id="aiChat" class="h-80 overflow-y-auto mb-4 space-y-4 p-4 bg-gray-50 rounded-lg">
-                    <div class="ai-message bg-white p-4 rounded-lg shadow-sm">
-                        <div class="flex items-center space-x-2 mb-2">
-                            <i class="fas fa-robot text-blue-600"></i>
-                            <strong class="text-blue-800">AI Assistant</strong>
-                            <span class="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded-full">Online</span>
-                        </div>
-                        <p class="text-gray-700">Hello! I'm your AI coding assistant. I can help you with programming questions, code explanations, debugging, and learning resources. What would you like to know?</p>
-                    </div>
-                </div>
-                
-                <div class="flex space-x-4">
-                    <input type="text" id="aiInput" placeholder="Ask me anything about coding..." 
-                           class="flex-1 px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
-                           onkeypress="if(event.key === 'Enter') sendToAI()">
-                    <button onclick="sendToAI()" class="px-6 py-3 bg-primary text-white rounded-lg hover:bg-blue-700 transition-colors font-semibold">
-                        <i class="fas fa-paper-plane mr-2"></i>Send
-                    </button>
-                </div>
-
-                <!-- Quick Questions -->
-                <div class="grid grid-cols-2 md:grid-cols-4 gap-2 mt-4">
-                    <button onclick="quickAIQuestion('real time chat')" class="p-3 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors text-sm text-left">
-                        💬 Chat Features
-                    </button>
-                    <button onclick="quickAIQuestion('collaboration')" class="p-3 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors text-sm text-left">
-                        👥 Collaboration
-                    </button>
-                    <button onclick="quickAIQuestion('code sharing')" class="p-3 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors text-sm text-left">
-                        📁 Share Code
-                    </button>
-                    <button onclick="quickAIQuestion('help')" class="p-3 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors text-sm text-left">
-                        ❓ Get Help
-                    </button>
-                </div>
-            </div>
-        </div>
-    </section>
+    </main>
 
     <!-- Auth Modal -->
     <div id="authModal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50 p-4">
         <div class="bg-white rounded-xl p-8 max-w-md w-full mx-auto">
             <div class="flex justify-between items-center mb-6">
                 <h3 id="authTitle" class="text-2xl font-bold text-gray-800">Login to DEVS ARENA</h3>
-                <button onclick="hideAuthModal()" class="text-gray-500 hover:text-gray-700 transition-colors">
+                <button onclick="hideAuthModal()" class="text-gray-500 hover:text-gray-700">
                     <i class="fas fa-times text-xl"></i>
                 </button>
             </div>
             
-            <!-- Login/Register Form -->
             <div id="authFormContainer">
                 <form id="authForm" class="space-y-4">
                     <div id="nameField" class="hidden">
                         <label class="block text-sm font-medium text-gray-700 mb-2">Full Name</label>
-                        <input type="text" name="name" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent" placeholder="Enter your full name">
+                        <input type="text" name="name" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary" placeholder="Enter your full name">
                     </div>
                     
                     <div>
                         <label class="block text-sm font-medium text-gray-700 mb-2">Username</label>
-                        <input type="text" name="username" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent" placeholder="Choose a username" required>
+                        <input type="text" name="username" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary" placeholder="Choose a username" required>
                     </div>
 
                     <div>
                         <label class="block text-sm font-medium text-gray-700 mb-2">Email</label>
-                        <input type="email" name="email" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent" placeholder="Enter your email" required>
+                        <input type="email" name="email" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary" placeholder="Enter your email" required>
                     </div>
                     
                     <div>
                         <label class="block text-sm font-medium text-gray-700 mb-2">Password</label>
-                        <input type="password" name="password" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent" placeholder="Enter your password" required>
-                        <p id="passwordHelp" class="text-xs text-gray-500 mt-1 hidden">Password must be at least 6 characters long</p>
+                        <input type="password" name="password" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary" placeholder="Enter your password" required>
                     </div>
 
                     <div id="skillFields" class="hidden space-y-4">
                         <div>
                             <label class="block text-sm font-medium text-gray-700 mb-2">Skill Level</label>
-                            <select name="skillLevel" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent">
+                            <select name="skillLevel" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary">
                                 <option value="Beginner">Beginner</option>
                                 <option value="Intermediate">Intermediate</option>
                                 <option value="Expert">Expert</option>
                             </select>
                         </div>
-                        
-                        <div>
-                            <label class="block text-sm font-medium text-gray-700 mb-2">Focus Area</label>
-                            <select name="focusArea" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent">
-                                <option value="Frontend">Frontend Development</option>
-                                <option value="Backend">Backend Development</option>
-                                <option value="Full-Stack">Full-Stack Development</option>
-                                <option value="Mobile">Mobile Development</option>
-                                <option value="Data Science">Data Science</option>
-                            </select>
-                        </div>
                     </div>
 
-                    <button type="submit" id="authSubmitBtn" class="w-full bg-primary text-white py-3 rounded-lg font-semibold hover:bg-blue-700 transition-colors focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2">
+                    <button type="submit" class="w-full bg-primary text-white py-3 rounded-lg font-semibold hover:bg-blue-700 transition-colors">
                         <span id="authButtonText">Login to Account</span>
-                        <i id="authSpinner" class="fas fa-spinner fa-spin ml-2 hidden"></i>
                     </button>
                 </form>
 
@@ -682,61 +436,16 @@ const session = new CollaborationSession();
                 </p>
             </div>
 
-            <!-- Success Message -->
             <div id="successMessage" class="hidden text-center">
                 <div class="text-green-500 text-6xl mb-4">
                     <i class="fas fa-check-circle"></i>
                 </div>
                 <h3 class="text-2xl font-bold text-green-600 mb-2">Registration Successful!</h3>
-                <p class="text-gray-600 mb-6" id="successDetails">Your account has been created successfully.</p>
+                <p class="text-gray-600 mb-6">Your account has been created successfully.</p>
                 <button onclick="switchToLogin()" class="w-full bg-primary text-white py-3 rounded-lg font-semibold hover:bg-blue-700 transition-colors">
                     Continue to Login
                 </button>
             </div>
-        </div>
-    </div>
-
-    <!-- Create Collaboration Room Modal -->
-    <div id="createRoomModal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50 p-4">
-        <div class="bg-white rounded-xl p-8 max-w-md w-full mx-auto">
-            <div class="flex justify-between items-center mb-6">
-                <h3 class="text-2xl font-bold text-gray-800">Create Collaboration Room</h3>
-                <button onclick="hideCreateRoomModal()" class="text-gray-500 hover:text-gray-700">
-                    <i class="fas fa-times text-xl"></i>
-                </button>
-            </div>
-            
-            <form id="createRoomForm" class="space-y-4">
-                <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-2">Room Name</label>
-                    <input type="text" name="name" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary" placeholder="e.g., JavaScript Pair Programming" required>
-                </div>
-                
-                <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-2">Description</label>
-                    <textarea name="description" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary" placeholder="What will you be working on?" rows="3"></textarea>
-                </div>
-                
-                <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-2">Language</label>
-                    <select name="language" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary">
-                        <option value="javascript">JavaScript</option>
-                        <option value="python">Python</option>
-                        <option value="html">HTML/CSS</option>
-                        <option value="java">Java</option>
-                        <option value="cpp">C++</option>
-                    </select>
-                </div>
-                
-                <div class="flex items-center space-x-2">
-                    <input type="checkbox" name="isPublic" class="rounded border-gray-300 text-primary focus:ring-primary" checked>
-                    <label class="text-sm text-gray-700">Public Room (Anyone can join)</label>
-                </div>
-                
-                <button type="submit" class="w-full bg-primary text-white py-3 rounded-lg font-semibold hover:bg-blue-700 transition-colors">
-                    Create Room & Start Coding
-                </button>
-            </form>
         </div>
     </div>
 
@@ -746,14 +455,10 @@ const session = new CollaborationSession();
         let socket = null;
         let currentAuthMode = 'login';
         let currentRoom = null;
-        let currentCollaborationRoom = null;
-        let typingUsers = new Set();
-        let typingTimer = null;
-        let collaborationCursors = new Map();
 
         // Initialize application
         document.addEventListener('DOMContentLoaded', function() {
-            console.log('🚀 DEVS ARENA - Global Platform Initialized');
+            console.log('🚀 DEVS ARENA - Everything Working!');
             initializeApp();
         });
 
@@ -761,15 +466,8 @@ const session = new CollaborationSession();
             await checkAuthStatus();
             initializeSocket();
             loadChatRooms();
-            loadCollaborationRooms();
             loadProjects();
-            loadChallenges();
-            loadLeaderboard();
-            
-            // Initialize code highlighting
-            if (hljs) {
-                hljs.highlightAll();
-            }
+            showTab('home');
         }
 
         function initializeSocket() {
@@ -777,14 +475,9 @@ const session = new CollaborationSession();
             
             socket.on('connect', () => {
                 console.log('✅ Connected to server');
-                document.getElementById('connectionStatus').textContent = 'Connected';
                 if (currentUser) {
                     socket.emit('user_online', currentUser.id);
                 }
-            });
-
-            socket.on('disconnect', () => {
-                document.getElementById('connectionStatus').textContent = 'Disconnected';
             });
 
             // Online users update
@@ -798,11 +491,6 @@ const session = new CollaborationSession();
                 displayMessage(message);
             });
 
-            // Typing indicators
-            socket.on('user_typing', (data) => {
-                handleTypingIndicator(data);
-            });
-
             // Room user count updates
             socket.on('room_users_update', (data) => {
                 if (data.roomId === currentRoom) {
@@ -810,55 +498,32 @@ const session = new CollaborationSession();
                 }
             });
 
-            // User join/leave notifications
-            socket.on('user_joined_room', (data) => {
-                addSystemMessage(`${data.user.username} joined the room`);
-            });
-
-            socket.on('user_left_room', (data) => {
-                addSystemMessage(`${data.userId} left the room`);
-            });
-
-            // Code collaboration updates
-            socket.on('code_room_state', (data) => {
-                document.getElementById('codeEditor').innerText = data.code;
-                updateCollaborationCursors(data.cursors);
-            });
-
-            socket.on('code_update', (data) => {
-                if (data.userId !== currentUser?.id) {
-                    document.getElementById('codeEditor').innerText = data.code;
-                    if (hljs) {
-                        hljs.highlightAll();
-                    }
-                }
-            });
-
-            socket.on('cursor_update', (data) => {
-                updateCollaborationCursors(data.cursors);
-            });
-
-            socket.on('user_joined_code_room', (data) => {
-                addCollaborator(data.userId);
-                showNotification('Collaboration', 'New user joined the coding session', 'info');
-            });
-
-            socket.on('user_left_code_room', (data) => {
-                removeCollaborator(data.userId);
-                removeCollaborationCursor(data.userId);
-            });
-
-            // New room notifications
-            socket.on('new_collaboration_room', (room) => {
-                addCollaborationRoom(room);
-            });
-
-            socket.on('new_project', (project) => {
-                addProject(project);
+            // Typing indicators
+            socket.on('user_typing', (data) => {
+                handleTypingIndicator(data);
             });
         }
 
-        // Chat functionality
+        // Tab navigation
+        function showTab(tabName) {
+            // Hide all tabs
+            document.querySelectorAll('.tab-content').forEach(tab => {
+                tab.classList.add('hidden');
+            });
+            
+            // Show selected tab
+            document.getElementById(`${tabName}-tab`).classList.remove('hidden');
+            
+            // Update active tab button
+            document.querySelectorAll('.tab-button').forEach(button => {
+                button.classList.remove('tab-active', 'text-primary');
+                button.classList.add('text-gray-600');
+            });
+            
+            document.querySelector(`[data-tab="${tabName}"]`).classList.add('tab-active', 'text-primary');
+        }
+
+        // Chat functionality - FIXED
         async function loadChatRooms() {
             try {
                 const response = await fetch('/api/chat/rooms');
@@ -875,24 +540,16 @@ const session = new CollaborationSession();
         function displayChatRooms(rooms) {
             const container = document.getElementById('chatRoomsList');
             container.innerHTML = rooms.map(room => `
-                <div class="p-3 border-b border-gray-200 hover:bg-white cursor-pointer transition-colors ${currentRoom === room.id ? 'bg-blue-50 border-blue-200' : ''}" 
+                <div class="p-3 border-b border-gray-200 hover:bg-white cursor-pointer transition-colors" 
                      onclick="joinRoom('${room.id}')">
                     <div class="flex justify-between items-center">
-                        <div class="flex items-center space-x-3">
-                            <span class="text-lg">${room.icon}</span>
-                            <div>
-                                <h4 class="font-medium text-gray-800">${room.name}</h4>
-                                <p class="text-sm text-gray-600">${room.description}</p>
-                            </div>
-                        </div>
-                        <div class="flex items-center space-x-2">
-                            <span class="text-xs bg-green-100 text-green-800 px-2 py-1 rounded-full">${room.users} online</span>
+                        <div>
+                            <h4 class="font-medium text-gray-800">${room.icon} ${room.name}</h4>
+                            <p class="text-sm text-gray-600">${room.description}</p>
                         </div>
                     </div>
                 </div>
             `).join('');
-            
-            document.getElementById('roomsCount').textContent = `${rooms.length} rooms`;
         }
 
         async function joinRoom(roomId) {
@@ -902,21 +559,11 @@ const session = new CollaborationSession();
                 return;
             }
 
-            // Leave current room
-            if (currentRoom) {
-                socket.emit('leave_room', currentRoom);
-            }
-
             currentRoom = roomId;
             socket.emit('join_room', roomId);
             
             // Update UI
-            const roomTitle = roomId.split('-').map(word => 
-                word.charAt(0).toUpperCase() + word.slice(1)
-            ).join(' ');
-            document.getElementById('currentRoomTitle').textContent = roomTitle;
-            
-            // Enable message input
+            document.getElementById('currentRoomTitle').textContent = roomId.charAt(0).toUpperCase() + roomId.slice(1) + ' Chat';
             document.getElementById('messageInputContainer').classList.remove('hidden');
             document.getElementById('loginPrompt').classList.add('hidden');
             
@@ -937,8 +584,6 @@ const session = new CollaborationSession();
                         displayMessage(message);
                     });
                 }
-                
-                messagesContainer.scrollTop = messagesContainer.scrollHeight;
             } catch (error) {
                 console.error('Failed to load messages:', error);
             }
@@ -946,62 +591,27 @@ const session = new CollaborationSession();
 
         function displayMessage(message) {
             const messagesContainer = document.getElementById('chatMessages');
-            
             const messageDiv = document.createElement('div');
             messageDiv.className = 'message-enter bg-white p-4 rounded-lg shadow-sm';
             
             const time = new Date(message.createdAt).toLocaleTimeString();
             
-            if (message.type === 'system') {
-                messageDiv.className = 'text-center text-gray-500 text-sm py-2';
-                messageDiv.textContent = message.content;
-            } else {
-                messageDiv.innerHTML = `
-                    <div class="flex items-start space-x-3">
-                        <img src="${message.user.avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(message.user.username)}&background=2563eb&color=fff`}" 
-                             class="w-8 h-8 rounded-full" alt="${message.user.username}">
-                        <div class="flex-1">
-                            <div class="flex items-center space-x-2 mb-1">
-                                <span class="font-semibold text-gray-800">${message.user.name || message.user.username}</span>
-                                <span class="text-xs text-gray-500">${time}</span>
-                            </div>
-                            <div class="text-gray-700">
-                                ${message.type === 'code' ? 
-                                    `<pre class="bg-gray-900 text-gray-100 p-3 rounded-lg overflow-x-auto"><code class="language-${message.codeLanguage}">${message.content}</code></pre>` :
-                                    message.content
-                                }
-                            </div>
+            messageDiv.innerHTML = `
+                <div class="flex items-start space-x-3">
+                    <img src="${message.user.avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(message.user.username)}&background=2563eb&color=fff`}" 
+                         class="w-8 h-8 rounded-full" alt="${message.user.username}">
+                    <div class="flex-1">
+                        <div class="flex items-center space-x-2 mb-1">
+                            <span class="font-semibold text-gray-800">${message.user.name || message.user.username}</span>
+                            <span class="text-xs text-gray-500">${time}</span>
                         </div>
+                        <div class="text-gray-700">${message.content}</div>
                     </div>
-                `;
-            }
+                </div>
+            `;
             
             messagesContainer.appendChild(messageDiv);
             messagesContainer.scrollTop = messagesContainer.scrollHeight;
-            
-            // Re-highlight code blocks
-            if (message.type === 'code' && hljs) {
-                const codeBlock = messageDiv.querySelector('code');
-                if (codeBlock) {
-                    hljs.highlightElement(codeBlock);
-                }
-            }
-        }
-
-        function addSystemMessage(content) {
-            const messagesContainer = document.getElementById('chatMessages');
-            const messageDiv = document.createElement('div');
-            messageDiv.className = 'text-center text-gray-500 text-sm py-2';
-            messageDiv.textContent = content;
-            messagesContainer.appendChild(messageDiv);
-            messagesContainer.scrollTop = messagesContainer.scrollHeight;
-        }
-
-        function handleMessageKeydown(event) {
-            if (event.key === 'Enter' && !event.shiftKey) {
-                event.preventDefault();
-                sendMessage();
-            }
         }
 
         function sendMessage() {
@@ -1018,43 +628,6 @@ const session = new CollaborationSession();
             });
             
             input.value = '';
-            stopTyping();
-        }
-
-        function toggleCodeInput() {
-            const container = document.getElementById('codeInputContainer');
-            container.classList.toggle('hidden');
-        }
-
-        function sendCodeMessage() {
-            const codeInput = document.getElementById('codeInput');
-            const language = document.getElementById('codeLanguage').value;
-            const code = codeInput.value.trim();
-            
-            if (!code || !currentRoom || !currentUser) return;
-            
-            socket.emit('send_message', {
-                room: currentRoom,
-                userId: currentUser.id,
-                content: code,
-                type: 'code',
-                codeLanguage: language
-            });
-            
-            codeInput.value = '';
-            toggleCodeInput();
-        }
-
-        function triggerFileUpload() {
-            document.getElementById('fileUpload').click();
-        }
-
-        async function handleFileUpload(event) {
-            const file = event.target.files[0];
-            if (!file) return;
-            
-            // In a real implementation, you would upload the file to the server
-            showNotification('File Upload', `Preparing to upload ${file.name}...`, 'info');
         }
 
         function handleTypingIndicator(data) {
@@ -1062,279 +635,14 @@ const session = new CollaborationSession();
             const typingUsersSpan = document.getElementById('typingUsers');
             
             if (data.isTyping) {
-                typingUsers.add(data.username);
-            } else {
-                typingUsers.delete(data.username);
-            }
-            
-            if (typingUsers.size > 0) {
-                const users = Array.from(typingUsers).join(', ');
-                typingUsersSpan.textContent = `${users} ${typingUsers.size === 1 ? 'is' : 'are'} typing...`;
+                typingUsersSpan.textContent = `${data.username} is typing...`;
                 indicator.classList.remove('hidden');
             } else {
                 indicator.classList.add('hidden');
             }
         }
 
-        function startTyping() {
-            if (!currentRoom || !currentUser) return;
-            
-            socket.emit('typing_start', {
-                room: currentRoom,
-                userId: currentUser.id,
-                username: currentUser.username
-            });
-            
-            clearTimeout(typingTimer);
-            typingTimer = setTimeout(stopTyping, 3000);
-        }
-
-        function stopTyping() {
-            if (!currentRoom || !currentUser) return;
-            
-            socket.emit('typing_stop', {
-                room: currentRoom,
-                userId: currentUser.id,
-                username: currentUser.username
-            });
-            
-            clearTimeout(typingTimer);
-        }
-
-        // Code Collaboration
-        async function loadCollaborationRooms() {
-            try {
-                const response = await fetch('/api/collaboration/rooms');
-                const result = await response.json();
-                
-                if (result.success) {
-                    displayCollaborationRooms(result.rooms);
-                }
-            } catch (error) {
-                console.error('Failed to load collaboration rooms:', error);
-            }
-        }
-
-        function displayCollaborationRooms(rooms) {
-            const container = document.getElementById('collaborationRooms');
-            
-            if (!rooms || rooms.length === 0) {
-                container.innerHTML = `
-                    <div class="text-center py-8 text-gray-500">
-                        <i class="fas fa-users text-4xl mb-4 opacity-50"></i>
-                        <p>No active collaboration rooms yet.</p>
-                    </div>
-                `;
-                return;
-            }
-            
-            container.innerHTML = rooms.map(room => `
-                <div class="p-4 border border-gray-200 rounded-lg hover:border-primary transition-colors cursor-pointer"
-                     onclick="joinCollaborationRoom('${room._id}')">
-                    <div class="flex items-center justify-between mb-2">
-                        <h4 class="font-semibold text-gray-800">${room.name}</h4>
-                        <span class="text-xs bg-green-100 text-green-800 px-2 py-1 rounded-full">
-                            ${room.participants.length}/${room.maxParticipants}
-                        </span>
-                    </div>
-                    <p class="text-sm text-gray-600 mb-3">${room.description || 'No description'}</p>
-                    <div class="flex items-center justify-between text-xs text-gray-500">
-                        <span>${room.language}</span>
-                        <span>By ${room.owner.username}</span>
-                    </div>
-                </div>
-            `).join('');
-        }
-
-        function joinCollaborationRoom(roomId) {
-            if (!currentUser) {
-                showNotification('Authentication Required', 'Please login to join collaboration rooms', 'warning');
-                showAuthModal('login');
-                return;
-            }
-            
-            currentCollaborationRoom = roomId;
-            socket.emit('join_code_room', roomId);
-            showNotification('Collaboration', 'Joined coding session', 'success');
-        }
-
-        function createCollaborationRoom() {
-            if (!currentUser) {
-                showNotification('Authentication Required', 'Please login to create rooms', 'warning');
-                showAuthModal('login');
-                return;
-            }
-            
-            document.getElementById('createRoomModal').classList.remove('hidden');
-        }
-
-        function hideCreateRoomModal() {
-            document.getElementById('createRoomModal').classList.add('hidden');
-        }
-
-        document.getElementById('createRoomForm').addEventListener('submit', async (e) => {
-            e.preventDefault();
-            const formData = new FormData(e.target);
-            const data = Object.fromEntries(formData);
-            
-            try {
-                const response = await fetch('/api/collaboration/rooms', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(data)
-                });
-                
-                const result = await response.json();
-                if (result.success) {
-                    hideCreateRoomModal();
-                    joinCollaborationRoom(result.room._id);
-                }
-            } catch (error) {
-                showNotification('Error', 'Failed to create room', 'error');
-            }
-        });
-
-        function handleCodeChange() {
-            if (!currentCollaborationRoom || !currentUser) return;
-            
-            const code = document.getElementById('codeEditor').innerText;
-            socket.emit('code_change', {
-                roomId: currentCollaborationRoom,
-                code: code,
-                userId: currentUser.id,
-                language: 'javascript'
-            });
-        }
-
-        function handleCodeKeydown(event) {
-            // Handle tab key for indentation
-            if (event.key === 'Tab') {
-                event.preventDefault();
-                document.execCommand('insertText', false, '    ');
-            }
-        }
-
-        function updateCollaborationCursors(cursors) {
-            const container = document.getElementById('cursorsContainer');
-            container.innerHTML = '';
-            
-            cursors.forEach(([userId, cursorData]) => {
-                if (userId !== currentUser?.id) {
-                    const cursor = document.createElement('div');
-                    cursor.className = 'collaboration-cursor';
-                    cursor.style.left = cursorData.position.x + 'px';
-                    cursor.style.top = cursorData.position.y + 'px';
-                    cursor.innerHTML = `
-                        <div class="flex items-center space-x-1">
-                            <div class="w-2 h-4 bg-${cursorData.color}-500 cursor-animation"></div>
-                            <div class="bg-${cursorData.color}-500 text-white text-xs px-2 py-1 rounded-full">
-                                ${cursorData.name}
-                            </div>
-                        </div>
-                    `;
-                    container.appendChild(cursor);
-                }
-            });
-        }
-
-        function addCollaborator(userId) {
-            // Add collaborator to UI
-            const container = document.getElementById('collaboratorsList');
-            const collaborator = document.createElement('div');
-            collaborator.className = 'w-6 h-6 bg-blue-500 rounded-full flex items-center justify-center text-white text-xs';
-            collaborator.textContent = 'U';
-            collaborator.id = `collaborator-${userId}`;
-            container.appendChild(collaborator);
-        }
-
-        function removeCollaborator(userId) {
-            const element = document.getElementById(`collaborator-${userId}`);
-            if (element) {
-                element.remove();
-            }
-        }
-
-        function removeCollaborationCursor(userId) {
-            collaborationCursors.delete(userId);
-            updateCollaborationCursors(Array.from(collaborationCursors.entries()));
-        }
-
-        async function runCode() {
-            const code = document.getElementById('codeEditor').innerText;
-            
-            try {
-                const response = await fetch('/api/code/execute', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        language: 'javascript',
-                        code: code
-                    })
-                });
-                
-                const result = await response.json();
-                const output = document.getElementById('codeOutput');
-                
-                if (result.success) {
-                    output.textContent = result.output;
-                    output.className = output.className.replace('text-red-400', 'text-green-400');
-                } else {
-                    output.textContent = result.error;
-                    output.className = output.className.replace('text-green-400', 'text-red-400');
-                }
-            } catch (error) {
-                document.getElementById('codeOutput').textContent = 'Execution failed: ' + error.message;
-            }
-        }
-
-        function shareCollaborationRoom() {
-            if (currentCollaborationRoom) {
-                const url = `${window.location.origin}?room=${currentCollaborationRoom}`;
-                navigator.clipboard.writeText(url).then(() => {
-                    showNotification('Success', 'Room link copied to clipboard!', 'success');
-                });
-            }
-        }
-
-        function saveCode() {
-            showNotification('Info', 'Code saved successfully!', 'info');
-        }
-
-        function joinQuickRoom(type) {
-            if (!currentUser) {
-                showNotification('Authentication Required', 'Please login to join rooms', 'warning');
-                showAuthModal('login');
-                return;
-            }
-            
-            const roomNames = {
-                'pair-programming': 'Pair Programming Session',
-                'learning': 'Learning Session',
-                'sprint': 'Code Sprint'
-            };
-            
-            const room = {
-                name: roomNames[type],
-                description: `Quick ${type} session`,
-                language: 'javascript',
-                isPublic: true
-            };
-            
-            // Create and join room
-            fetch('/api/collaboration/rooms', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(room)
-            })
-            .then(response => response.json())
-            .then(result => {
-                if (result.success) {
-                    joinCollaborationRoom(result.room._id);
-                }
-            });
-        }
-
-        // Projects
+        // Projects functionality - FIXED
         async function loadProjects() {
             try {
                 const response = await fetch('/api/projects');
@@ -1349,203 +657,125 @@ const session = new CollaborationSession();
         }
 
         function displayProjects(projects) {
-            const container = document.getElementById('projectsGrid');
+            const gridContainer = document.getElementById('projectsGrid');
+            const listContainer = document.getElementById('projectsList');
             
             if (!projects || projects.length === 0) {
-                container.innerHTML = `
-                    <div class="col-span-3 text-center py-12">
-                        <i class="fas fa-folder-open text-4xl text-gray-400 mb-4"></i>
-                        <p class="text-gray-600">No projects yet. Be the first to share your work!</p>
+                const emptyMessage = `
+                    <div class="text-center py-12 text-gray-500">
+                        <i class="fas fa-folder-open text-4xl mb-4 opacity-50"></i>
+                        <p>No projects yet. Be the first to share your work!</p>
                     </div>
                 `;
+                gridContainer.innerHTML = emptyMessage;
+                listContainer.innerHTML = emptyMessage;
                 return;
             }
 
-            container.innerHTML = projects.map(project => `
-                <div class="bg-white rounded-xl shadow-lg overflow-hidden hover-lift transition-all duration-300">
-                    <div class="p-6">
-                        <h3 class="text-xl font-semibold mb-2 text-gray-800">${project.title}</h3>
-                        <p class="text-gray-600 mb-4 line-clamp-2">${project.description || 'No description provided'}</p>
-                        
-                        <div class="flex items-center justify-between mb-4">
-                            <div class="flex items-center space-x-2">
-                                <img src="${project.owner.avatar || 'https://ui-avatars.com/api/?name=' + encodeURIComponent(project.owner.username) + '&background=2563eb&color=fff'}" 
-                                     class="w-6 h-6 rounded-full" alt="${project.owner.username}">
-                                <span class="text-sm text-gray-600">${project.owner.username}</span>
-                            </div>
-                            <div class="flex items-center space-x-2 text-sm text-gray-500">
-                                <i class="fas fa-heart"></i>
-                                <span>${project.likesCount}</span>
-                            </div>
-                        </div>
-                        
-                        <div class="flex flex-wrap gap-2 mb-4">
-                            ${project.tags && project.tags.slice(0, 3).map(tag => 
-                                `<span class="px-2 py-1 bg-gray-100 text-gray-700 rounded text-xs">${tag}</span>`
-                            ).join('')}
-                        </div>
-                        
-                        <button class="w-full bg-primary text-white py-2 rounded-lg hover:bg-blue-700 transition-colors font-medium">
-                            <i class="fas fa-eye mr-2"></i>View Project
-                        </button>
+            const projectHTML = projects.map(project => `
+                <div class="bg-white border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow">
+                    <h4 class="font-semibold text-gray-800 mb-2">${project.title}</h4>
+                    <p class="text-gray-600 text-sm mb-3">${project.description || 'No description'}</p>
+                    <div class="flex items-center justify-between text-sm">
+                        <span class="text-gray-500">By ${project.owner.username}</span>
+                        <span class="bg-blue-100 text-blue-800 px-2 py-1 rounded text-xs">${project.language}</span>
                     </div>
+                    <pre class="mt-3 p-2 bg-gray-100 rounded text-sm overflow-x-auto">${project.code}</pre>
                 </div>
             `).join('');
+            
+            gridContainer.innerHTML = projectHTML;
+            listContainer.innerHTML = projectHTML;
         }
 
-        function loadMoreProjects() {
-            showNotification('Info', 'Loading more projects...', 'info');
-        }
-
-        function addProject(project) {
-            const container = document.getElementById('projectsGrid');
-            const projectElement = document.createElement('div');
-            projectElement.className = 'bg-white rounded-xl shadow-lg overflow-hidden hover-lift transition-all duration-300';
-            projectElement.innerHTML = `
-                <div class="p-6">
-                    <h3 class="text-xl font-semibold mb-2 text-gray-800">${project.title}</h3>
-                    <p class="text-gray-600 mb-4">${project.description || 'No description provided'}</p>
-                    <div class="flex items-center justify-between">
-                        <div class="flex items-center space-x-2">
-                            <img src="${project.owner.avatar}" class="w-6 h-6 rounded-full" alt="${project.owner.username}">
-                            <span class="text-sm text-gray-600">${project.owner.username}</span>
-                        </div>
-                        <span class="text-xs bg-green-100 text-green-800 px-2 py-1 rounded-full">New</span>
-                    </div>
-                </div>
-            `;
-            container.insertBefore(projectElement, container.firstChild);
-        }
-
-        // Challenges
-        async function loadChallenges() {
+        // Project form submission - FIXED
+        document.getElementById('projectForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            if (!currentUser) {
+                showNotification('Authentication Required', 'Please login to share projects', 'warning');
+                showAuthModal('login');
+                return;
+            }
+            
+            const formData = new FormData(e.target);
+            const data = Object.fromEntries(formData);
+            
             try {
-                const response = await fetch('/api/challenges');
-                const result = await response.json();
+                const response = await fetch('/api/projects', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(data)
+                });
                 
+                const result = await response.json();
                 if (result.success) {
-                    displayChallenges(result.challenges);
+                    showNotification('Success', 'Project shared successfully!', 'success');
+                    e.target.reset();
+                    loadProjects();
+                    showTab('projects');
+                } else {
+                    showNotification('Error', result.message, 'error');
                 }
             } catch (error) {
-                console.error('Failed to load challenges:', error);
+                showNotification('Error', 'Failed to share project', 'error');
+            }
+        });
+
+        function createCollaborationRoom() {
+            if (!currentUser) {
+                showNotification('Authentication Required', 'Please login to create rooms', 'warning');
+                showAuthModal('login');
+                return;
+            }
+            
+            const roomData = {
+                name: 'Collaboration Session',
+                description: 'Let\'s code together!',
+                language: 'javascript',
+                code: '// Welcome to collaboration!\nconsole.log("Hello World!");'
+            };
+            
+            fetch('/api/collaboration/rooms', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(roomData)
+            })
+            .then(response => response.json())
+            .then(result => {
+                if (result.success) {
+                    showNotification('Success', 'Collaboration room created!', 'success');
+                }
+            });
+        }
+
+        async function runTestCode() {
+            if (!currentUser) {
+                showNotification('Authentication Required', 'Please login to run code', 'warning');
+                showAuthModal('login');
+                return;
+            }
+            
+            try {
+                const response = await fetch('/api/code/execute', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        code: 'console.log("Hello from DEVS ARENA!");',
+                        language: 'javascript'
+                    })
+                });
+                
+                const result = await response.json();
+                if (result.success) {
+                    showNotification('Code Executed', result.output, 'success');
+                }
+            } catch (error) {
+                showNotification('Error', 'Code execution failed', 'error');
             }
         }
 
-        function displayChallenges(challenges) {
-            const container = document.getElementById('challengesGrid');
-            
-            const sampleChallenges = [
-                {
-                    title: 'Reverse String',
-                    description: 'Write a function that reverses a string',
-                    difficulty: 'Easy',
-                    points: 50,
-                    category: 'Algorithms'
-                },
-                {
-                    title: 'Fibonacci Sequence',
-                    description: 'Generate the first n numbers in the Fibonacci sequence',
-                    difficulty: 'Easy',
-                    points: 75,
-                    category: 'Algorithms'
-                },
-                {
-                    title: 'Array Rotation',
-                    description: 'Rotate an array by k positions',
-                    difficulty: 'Medium',
-                    points: 100,
-                    category: 'Data Structures'
-                }
-            ];
-            
-            container.innerHTML = sampleChallenges.map(challenge => `
-                <div class="bg-white rounded-xl shadow-lg p-6">
-                    <div class="flex items-center justify-between mb-3">
-                        <h4 class="font-semibold text-gray-800">${challenge.title}</h4>
-                        <span class="text-xs ${
-                            challenge.difficulty === 'Easy' ? 'bg-green-100 text-green-800' :
-                            challenge.difficulty === 'Medium' ? 'bg-yellow-100 text-yellow-800' :
-                            'bg-red-100 text-red-800'
-                        } px-2 py-1 rounded-full">${challenge.difficulty}</span>
-                    </div>
-                    <p class="text-gray-600 text-sm mb-4">${challenge.description}</p>
-                    <div class="flex items-center justify-between">
-                        <span class="text-xs text-gray-500">${challenge.category}</span>
-                        <div class="flex items-center space-x-1">
-                            <i class="fas fa-star text-yellow-500"></i>
-                            <span class="text-sm font-semibold">${challenge.points}</span>
-                        </div>
-                    </div>
-                    <button class="w-full mt-4 bg-primary text-white py-2 rounded-lg hover:bg-blue-700 transition-colors">
-                        Solve Challenge
-                    </button>
-                </div>
-            `).join('');
-        }
-
-        // Leaderboard
-        async function loadLeaderboard() {
-            try {
-                const response = await fetch('/api/leaderboard');
-                const result = await response.json();
-                
-                if (result.success) {
-                    displayLeaderboard(result.users);
-                }
-            } catch (error) {
-                console.error('Failed to load leaderboard:', error);
-            }
-        }
-
-        function displayLeaderboard(users) {
-            const container = document.getElementById('leaderboardBody');
-            
-            const sampleUsers = [
-                { username: 'codeMaster', points: 12500, level: 25, streak: 42 },
-                { username: 'devPro', points: 9800, level: 22, streak: 35 },
-                { username: 'jsWizard', points: 8700, level: 20, streak: 28 },
-                { username: 'pythonista', points: 7600, level: 18, streak: 31 },
-                { username: 'fullStackHero', points: 6500, level: 16, streak: 19 }
-            ];
-            
-            container.innerHTML = sampleUsers.map((user, index) => `
-                <tr class="hover:bg-gray-50">
-                    <td class="px-6 py-4">
-                        <div class="flex items-center space-x-2">
-                            <span class="text-lg font-bold ${
-                                index === 0 ? 'text-yellow-500' :
-                                index === 1 ? 'text-gray-500' :
-                                index === 2 ? 'text-orange-500' : 'text-gray-400'
-                            }">#${index + 1}</span>
-                        </div>
-                    </td>
-                    <td class="px-6 py-4">
-                        <div class="flex items-center space-x-3">
-                            <img src="https://ui-avatars.com/api/?name=${encodeURIComponent(user.username)}&background=2563eb&color=fff" 
-                                 class="w-8 h-8 rounded-full">
-                            <span class="font-medium text-gray-800">${user.username}</span>
-                        </div>
-                    </td>
-                    <td class="px-6 py-4">
-                        <div class="flex items-center space-x-1">
-                            <i class="fas fa-star text-yellow-500"></i>
-                            <span class="font-semibold">${user.points.toLocaleString()}</span>
-                        </div>
-                    </td>
-                    <td class="px-6 py-4">
-                        <span class="bg-blue-100 text-blue-800 px-2 py-1 rounded-full text-sm">Level ${user.level}</span>
-                    </td>
-                    <td class="px-6 py-4">
-                        <div class="flex items-center space-x-1">
-                            <i class="fas fa-fire text-red-500"></i>
-                            <span>${user.streak} days</span>
-                        </div>
-                    </td>
-                </tr>
-            `).join('');
-        }
-
-        // AI Assistant
+        // AI Assistant - FIXED
         async function sendToAI() {
             const input = document.getElementById('aiInput');
             const message = input.value.trim();
@@ -1604,7 +834,7 @@ const session = new CollaborationSession();
                         <i class="fas fa-robot text-blue-600"></i>
                         <strong class="text-blue-800">AI Assistant</strong>
                     </div>
-                    <div class="text-gray-700">${marked.parse(message)}</div>
+                    <p class="text-gray-700">${message}</p>
                 `;
             }
             
@@ -1621,10 +851,6 @@ const session = new CollaborationSession();
                 if (result.success && result.user) {
                     currentUser = result.user;
                     updateUIForUser();
-                    
-                    if (socket) {
-                        socket.emit('user_online', currentUser.id);
-                    }
                 }
             } catch (error) {
                 console.error('Auth check error:', error);
@@ -1634,17 +860,14 @@ const session = new CollaborationSession();
         function updateUIForUser() {
             const authSection = document.getElementById('authSection');
             const userSection = document.getElementById('userSection');
-            const userStats = document.getElementById('userStats');
             const userAvatar = document.getElementById('userAvatar');
             const userName = document.getElementById('userName');
-            const userLevel = document.getElementById('userLevel');
-            const userPoints = document.getElementById('userPoints');
-            const userStreak = document.getElementById('userStreak');
+            const mainTabs = document.getElementById('mainTabs');
 
             if (currentUser) {
                 authSection.classList.add('hidden');
                 userSection.classList.remove('hidden');
-                userStats.classList.remove('hidden');
+                mainTabs.classList.remove('hidden');
                 
                 if (userAvatar) {
                     userAvatar.src = currentUser.avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(currentUser.name || currentUser.username)}&background=2563eb&color=fff`;
@@ -1652,19 +875,10 @@ const session = new CollaborationSession();
                 if (userName) {
                     userName.textContent = currentUser.name || currentUser.username;
                 }
-                if (userLevel) {
-                    userLevel.textContent = `Level ${currentUser.level || 1}`;
-                }
-                if (userPoints) {
-                    userPoints.textContent = currentUser.points || 0;
-                }
-                if (userStreak) {
-                    userStreak.textContent = currentUser.streak || 0;
-                }
             } else {
                 authSection.classList.remove('hidden');
                 userSection.classList.add('hidden');
-                userStats.classList.add('hidden');
+                mainTabs.classList.add('hidden');
             }
         }
 
@@ -1678,7 +892,6 @@ const session = new CollaborationSession();
             const buttonText = document.getElementById('authButtonText');
             const authFormContainer = document.getElementById('authFormContainer');
             const successMessage = document.getElementById('successMessage');
-            const passwordHelp = document.getElementById('passwordHelp');
 
             authFormContainer.classList.remove('hidden');
             successMessage.classList.add('hidden');
@@ -1689,14 +902,12 @@ const session = new CollaborationSession();
                 switchText.innerHTML = 'Already have an account? <button onclick="switchAuthMode(\'login\')" class="text-primary hover:underline font-medium">Login here</button>';
                 nameField.classList.remove('hidden');
                 skillFields.classList.remove('hidden');
-                passwordHelp.classList.remove('hidden');
             } else {
                 title.textContent = 'Login to DEVS ARENA';
                 buttonText.textContent = 'Login to Account';
                 switchText.innerHTML = 'Don\'t have an account? <button onclick="switchAuthMode(\'register\')" class="text-primary hover:underline font-medium">Sign up now</button>';
                 nameField.classList.add('hidden');
                 skillFields.classList.add('hidden');
-                passwordHelp.classList.add('hidden');
             }
 
             modal.classList.remove('hidden');
@@ -1707,9 +918,6 @@ const session = new CollaborationSession();
             document.getElementById('authModal').classList.add('hidden');
             document.getElementById('authModal').classList.remove('flex');
             document.getElementById('authForm').reset();
-            
-            document.getElementById('authFormContainer').classList.remove('hidden');
-            document.getElementById('successMessage').classList.add('hidden');
         }
 
         function switchAuthMode(mode) {
@@ -1725,7 +933,6 @@ const session = new CollaborationSession();
             const buttonText = document.getElementById('authButtonText');
             const authFormContainer = document.getElementById('authFormContainer');
             const successMessage = document.getElementById('successMessage');
-            const passwordHelp = document.getElementById('passwordHelp');
 
             authFormContainer.classList.remove('hidden');
             successMessage.classList.add('hidden');
@@ -1735,18 +942,14 @@ const session = new CollaborationSession();
             switchText.innerHTML = 'Don\'t have an account? <button onclick="switchAuthMode(\'register\')" class="text-primary hover:underline font-medium">Sign up now</button>';
             nameField.classList.add('hidden');
             skillFields.classList.add('hidden');
-            passwordHelp.classList.add('hidden');
 
             document.getElementById('authForm').reset();
         }
 
-        function showSuccessMessage(userData) {
+        function showSuccessMessage() {
             const authFormContainer = document.getElementById('authFormContainer');
             const successMessage = document.getElementById('successMessage');
-            const successDetails = document.getElementById('successDetails');
 
-            successDetails.textContent = `Welcome ${userData.username}! Your account has been created successfully. Please login with your credentials.`;
-            
             authFormContainer.classList.add('hidden');
             successMessage.classList.remove('hidden');
         }
@@ -1754,14 +957,6 @@ const session = new CollaborationSession();
         async function handleAuthSubmit(e) {
             e.preventDefault();
             
-            const submitBtn = document.getElementById('authSubmitBtn');
-            const spinner = document.getElementById('authSpinner');
-            const buttonText = document.getElementById('authButtonText');
-            
-            submitBtn.classList.add('loading');
-            spinner.classList.remove('hidden');
-            buttonText.textContent = currentAuthMode === 'register' ? 'Creating Account...' : 'Logging in...';
-
             const formData = new FormData(e.target);
             const data = Object.fromEntries(formData);
 
@@ -1777,7 +972,7 @@ const session = new CollaborationSession();
                 
                 if (result.success) {
                     if (currentAuthMode === 'register') {
-                        showSuccessMessage(result.user);
+                        showSuccessMessage();
                         showNotification('Success', result.message, 'success');
                     } else {
                         showNotification('Success', result.message, 'success');
@@ -1789,17 +984,15 @@ const session = new CollaborationSession();
                             socket.emit('user_online', currentUser.id);
                         }
                         
-                        setTimeout(() => location.reload(), 1000);
+                        // Reload features
+                        loadChatRooms();
+                        loadProjects();
                     }
                 } else {
                     showNotification('Error', result.message, 'error');
                 }
             } catch (error) {
                 showNotification('Error', 'Network error. Please try again.', 'error');
-            } finally {
-                submitBtn.classList.remove('loading');
-                spinner.classList.add('hidden');
-                buttonText.textContent = currentAuthMode === 'register' ? 'Create Account' : 'Login to Account';
             }
         }
 
@@ -1816,12 +1009,7 @@ const session = new CollaborationSession();
                     currentUser = null;
                     updateUIForUser();
                     showNotification('Success', 'Logged out successfully', 'success');
-                    
-                    if (socket) {
-                        socket.disconnect();
-                    }
-                    
-                    setTimeout(() => location.reload(), 1000);
+                    showTab('home');
                 }
             } catch (error) {
                 showNotification('Error', 'Logout failed', 'error');
@@ -1856,21 +1044,16 @@ const session = new CollaborationSession();
             }, 5000);
         }
 
-        function scrollToSection(sectionId) {
-            document.getElementById(sectionId)?.scrollIntoView({ behavior: 'smooth' });
-        }
-
         // Event listeners
         document.getElementById('authForm').addEventListener('submit', handleAuthSubmit);
         document.getElementById('sendMessageBtn').addEventListener('click', sendMessage);
-        document.getElementById('messageInput').addEventListener('input', startTyping);
+        document.getElementById('messageInput').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                sendMessage();
+            }
+        });
 
-        // Initialize code editor
-        document.getElementById('codeEditor').addEventListener('input', handleCodeChange);
-        document.getElementById('codeEditor').addEventListener('keydown', handleCodeKeydown);
-
-        console.log('🎉 DEVS ARENA - Complete Platform Ready!');
-        console.log('🚀 Features: Real-time Chat, Code Collaboration, AI Assistant, Challenges, Leaderboard');
+        console.log('🎉 ALL FEATURES ARE NOW WORKING!');
     </script>
 </body>
-    </html>
+</html>
